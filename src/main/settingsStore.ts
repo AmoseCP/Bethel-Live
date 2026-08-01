@@ -1,6 +1,6 @@
 /** 设置持久化：userData/settings.json，密钥字段用 safeStorage 加密 */
 import { app, safeStorage } from 'electron'
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { AppSettings, DEFAULT_SETTINGS } from '../shared/settings'
 import { deserializeSettings, SecretCodec, serializeSettings } from './core/settingsCodec'
@@ -41,6 +41,8 @@ export function updateSettings(patch: Partial<AppSettings>): AppSettings {
   cache = next
   const file = settingsPath()
   mkdirSync(dirname(file), { recursive: true })
+  // 每次写入前留一份上个版本的备份，误覆盖时可手动找回
+  if (existsSync(file)) copyFileSync(file, file + '.bak')
   const tmp = file + '.tmp'
   writeFileSync(tmp, JSON.stringify(serializeSettings(next, codec()), null, 2), 'utf8')
   renameSync(tmp, file)
