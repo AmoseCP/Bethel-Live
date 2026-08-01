@@ -1,0 +1,100 @@
+name: Release
+
+# 每次推送到 main：自动升补丁版本 → 打 tag → 双平台打包 → 发布 Release
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    # 版本号提交自身不再触发新发布，防止死循环
+    if: "!startsWith(github.event.head_commit.message, 'chore(release)')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.bump.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 递增补丁版本并打标签
+        id: bump
+        run: |
+          git config user.name "AmoseCP"
+          git config user.email "amose.d@christianpost.com"
+          NEW=$(npm version patch --no-git-tag-version)
+          git add package.json
+          git commit -m "chore(release): $NEW [skip ci]"
+          git tag "$NEW"
+          git push origin main "$NEW"
+          echo "tag=$NEW" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: build:win
+            artifact: release/*.exe
+          - os: macos-latest
+            script: build:mac
+            artifact: release/*.dmg
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 单元测试（打包前最后防线）
+        run: pnpm test
+
+      - name: 打包安装包
+        run: pnpm ${{ matrix.script }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: ${{ matrix.artifact }}
+
+  publish:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: 创建 Release 并上传双平台安装包
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(dist/*)
+          gh release create "${{ needs.version.outputs.tag }}" "${files[@]}" \
+            --title "Bethel Live ${{ needs.version.outputs.tag }}" \
+            --generate-notes
