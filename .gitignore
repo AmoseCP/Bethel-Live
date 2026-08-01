@@ -1,0 +1,31 @@
+# 按 PROMPT.md 要求不提交的文档
+CLAUDE.md
+DEV_PLAN.md
+MEMORY.md
+PROMPT.md
+DIALOG.md
+REQUIREMENTS.md
+
+# 依赖与构建产物
+node_modules/
+dist/
+out/
+release/
+*.local
+
+# 测试产物
+coverage/
+playwright-report/
+test-results/
+
+# 系统/编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# 环境与密钥
+.env
+.env.*
+*.pem
+credentials*.json
