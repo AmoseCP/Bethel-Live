@@ -16,10 +16,11 @@ import {
 import { buildStreamArgs, CaptureTarget, DEFAULT_ENCODE } from './core/ffmpegArgs'
 import type { VideoSourceKind } from '../shared/settings'
 
-/** 打包后优先用随应用分发的 ffmpeg，否则用系统 PATH 中的 */
+/** 打包后优先用随应用分发的 ffmpeg（resources/bin），否则用系统 PATH 中的 */
 export function ffmpegPath(): string {
   const bundled = join(
     process.resourcesPath ?? '',
+    'bin',
     process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
   )
   if (app.isPackaged && existsSync(bundled)) return bundled

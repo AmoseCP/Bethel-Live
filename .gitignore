@@ -32,3 +32,6 @@ credentials*.json
 
 # TS 增量构建缓存
 *.tsbuildinfo
+
+# 打包与E2E产物
+release/

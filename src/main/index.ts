@@ -17,6 +17,11 @@ import { isStreaming, stopStream } from './ffmpegService'
 
 const isDev = !app.isPackaged
 
+// E2E 测试：独立 userData 目录，避免污染真实配置
+if (process.env.BETHEL_USER_DATA) {
+  app.setPath('userData', process.env.BETHEL_USER_DATA)
+}
+
 // 测试/CI 用假媒体设备（避免无 TCC 授权环境下访问真实摄像头导致进程被系统终止）
 export const FAKE_MEDIA = process.env.BETHEL_FAKE_MEDIA === '1'
 if (FAKE_MEDIA) {

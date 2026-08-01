@@ -1,0 +1,33 @@
+appId: com.bethellive.app
+productName: Bethel Live
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+extraResources:
+  - from: resources/tray-icon.png
+    to: tray-icon.png
+  - from: resources/bin
+    to: bin
+    filter:
+      - '**/*'
+mac:
+  target:
+    - dmg
+  icon: build/icon.png
+  category: public.app-category.video
+  extendInfo:
+    NSCameraUsageDescription: Bethel Live 需要访问摄像头以采集直播画面
+    NSMicrophoneUsageDescription: Bethel Live 需要访问麦克风以采集直播声音
+    NSScreenCaptureUsageDescription: Bethel Live 需要录制屏幕以进行屏幕直播
+win:
+  target:
+    - nsis
+  icon: build/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Bethel Live

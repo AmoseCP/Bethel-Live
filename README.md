@@ -31,10 +31,12 @@ pnpm typecheck      # TypeScript 类型检查
 ## 测试
 
 ```bash
-pnpm test           # 全部单元测试（Vitest）
+pnpm test           # 全部单元测试（Vitest，68 项）
 pnpm test:watch     # 单元测试 watch 模式
-pnpm test:e2e       # 端到端测试（Playwright，驱动真实 Electron）
+pnpm build && pnpm test:e2e   # 端到端测试（Playwright 驱动真实 Electron，先 build）
 ```
+
+E2E 测试通过环境变量隔离运行：`BETHEL_FAKE_MEDIA=1`（Chromium 假摄像头/麦克风）、`BETHEL_MOCK_API=1`（YouTube/Telegram/FFmpeg 假实现）、`BETHEL_USER_DATA`（独立配置目录），不会触网或动真实配置。
 
 ## 构建与打包
 
@@ -44,7 +46,9 @@ pnpm build:mac      # 打包 macOS .dmg（在 macOS 上执行）
 pnpm build:win      # 打包 Windows NSIS 安装包（在 Windows 上执行）
 ```
 
-产物在 `release/` 目录。
+产物在 `release/` 目录。无签名证书时用 `CSC_IDENTITY_AUTO_DISCOVERY=false pnpm build:mac` 跳过 macOS 签名。
+
+**内置 FFmpeg（可选）**：把对应平台的 ffmpeg 静态可执行文件放入 `resources/bin/`（macOS 名为 `ffmpeg`，Windows 名为 `ffmpeg.exe`）再打包，即随应用分发；否则应用运行时使用系统 PATH 中的 ffmpeg。详见 `resources/bin/README.txt`。
 
 ## 替换 Logo
 
