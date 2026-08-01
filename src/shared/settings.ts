@@ -17,6 +17,8 @@ export interface AppSettings {
   audioDeviceId: string
   /** 视频源 */
   videoSource: VideoSourceKind
+  /** 屏幕直播采集哪块屏幕：auto=有外接屏优先外接（PPT 放映屏） */
+  screenPreference: 'auto' | 'primary' | 'external'
   /** 开机自启 */
   launchAtLogin: boolean
   /** 关闭窗口行为：ask=每次询问 quit=退出 tray=最小化到托盘 */
@@ -37,6 +39,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   videoDeviceId: '',
   audioDeviceId: '',
   videoSource: 'camera',
+  screenPreference: 'auto',
   launchAtLogin: false,
   closeAction: 'ask',
   theme: DEFAULT_THEME

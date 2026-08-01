@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  findScreenDevice,
   matchDeviceByLabel,
   parseAvfoundationDevices,
   parseDshowDevices,
-  parseProgressLine
+  parseProgressLine,
+  pickScreenDevice
 } from '../../src/main/core/ffmpegParse'
 
 const AVF_STDERR = `
@@ -60,10 +60,24 @@ describe('matchDeviceByLabel', () => {
   })
 })
 
-describe('findScreenDevice', () => {
-  it('找到 Capture screen 设备', () => {
-    const list = parseAvfoundationDevices(AVF_STDERR)
-    expect(findScreenDevice(list.video)?.index).toBe(2)
+describe('pickScreenDevice', () => {
+  const one = parseAvfoundationDevices(AVF_STDERR).video // 只有 Capture screen 0
+  const two = [
+    ...one,
+    { index: 3, name: 'Capture screen 1' }
+  ]
+  it('单屏：任何偏好都取唯一屏幕', () => {
+    expect(pickScreenDevice(one, 'auto')?.index).toBe(2)
+    expect(pickScreenDevice(one, 'external')?.index).toBe(2)
+    expect(pickScreenDevice(one, 'primary')?.index).toBe(2)
+  })
+  it('双屏：auto/external 取外接屏（第二块），primary 取主屏', () => {
+    expect(pickScreenDevice(two, 'auto')?.name).toBe('Capture screen 1')
+    expect(pickScreenDevice(two, 'external')?.name).toBe('Capture screen 1')
+    expect(pickScreenDevice(two, 'primary')?.name).toBe('Capture screen 0')
+  })
+  it('无屏幕设备返回 null', () => {
+    expect(pickScreenDevice([{ index: 0, name: 'FaceTime HD Camera' }], 'auto')).toBeNull()
   })
 })
 

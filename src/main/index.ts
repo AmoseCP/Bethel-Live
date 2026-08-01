@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  screen,
   session,
   shell,
   Tray
@@ -176,11 +177,17 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   ipcMain.handle('window:setMini', (_e, mini: boolean) => setMiniMode(mini))
 
-  // 渲染进程 getDisplayMedia（屏幕预览源）：直接取主屏幕，不弹选择器
+  // 渲染进程 getDisplayMedia（屏幕预览源）：按设置选屏，不弹选择器
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
     desktopCapturer
       .getSources({ types: ['screen'] })
-      .then((sources) => callback({ video: sources[0] }))
+      .then((sources) => {
+        const pref = getSettings().screenPreference
+        const primaryId = String(screen.getPrimaryDisplay().id)
+        const primary = sources.find((s) => s.display_id === primaryId) ?? sources[0]
+        const external = sources.find((s) => s.display_id && s.display_id !== primaryId)
+        callback({ video: pref === 'primary' ? primary : (external ?? primary) })
+      })
       .catch(() => callback({}))
   })
 

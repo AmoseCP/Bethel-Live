@@ -1,18 +1,19 @@
 /**
  * FFmpeg 进程管理：设备枚举、启动/停止推流、进度事件广播。
  */
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, screen } from 'electron'
 import { ChildProcess, execFile, spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   FfDeviceList,
-  findScreenDevice,
   matchDeviceByLabel,
   parseAvfoundationDevices,
   parseDshowDevices,
-  parseProgressLine
+  parseProgressLine,
+  pickScreenDevice
 } from './core/ffmpegParse'
+import { getSettings } from './settingsStore'
 import { buildStreamArgs, CaptureTarget, DEFAULT_ENCODE } from './core/ffmpegArgs'
 import type { VideoSourceKind } from '../shared/settings'
 
@@ -83,9 +84,21 @@ export async function startStream(opts: StreamStartOptions): Promise<void> {
   if (!audio) throw new Error('未找到可用的音频采集设备')
 
   if (opts.source === 'screen' && target.platform === 'darwin') {
-    const screen = findScreenDevice(devices.video)
-    if (!screen) throw new Error('未找到屏幕捕获设备（请在系统设置中授权屏幕录制）')
-    target.videoIndex = screen.index
+    const screenDev = pickScreenDevice(devices.video, getSettings().screenPreference)
+    if (!screenDev) throw new Error('未找到屏幕捕获设备（请在系统设置中授权屏幕录制）')
+    target.videoIndex = screenDev.index
+  } else if (opts.source === 'screen') {
+    // Windows：按偏好换算所选屏幕的物理像素区域
+    const pref = getSettings().screenPreference
+    const primary = screen.getPrimaryDisplay()
+    const externals = screen.getAllDisplays().filter((d) => d.id !== primary.id)
+    const chosen = pref === 'primary' ? primary : (externals[0] ?? primary)
+    target.screenRegion = {
+      x: Math.round(chosen.bounds.x * chosen.scaleFactor),
+      y: Math.round(chosen.bounds.y * chosen.scaleFactor),
+      width: Math.round(chosen.bounds.width * chosen.scaleFactor),
+      height: Math.round(chosen.bounds.height * chosen.scaleFactor)
+    }
   } else if (opts.source === 'camera') {
     const video =
       matchDeviceByLabel(devices.video, opts.videoLabel) ??

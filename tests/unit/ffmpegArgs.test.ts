@@ -64,6 +64,24 @@ describe('buildStreamArgs — Windows', () => {
     expect(s).toContain('-f gdigrab')
     expect(args).toContain('desktop')
     expect(args).toContain('audio=Mic')
+    expect(s).not.toContain('-offset_x')
+  })
+
+  it('屏幕：指定外接屏区域（offset + size）', () => {
+    const args = buildStreamArgs(
+      {
+        platform: 'win32',
+        source: 'screen',
+        audioName: 'Mic',
+        screenRegion: { x: 1920, y: 0, width: 1920, height: 1080 }
+      },
+      RTMP
+    )
+    const s = args.join(' ')
+    expect(s).toContain('-offset_x 1920')
+    expect(s).toContain('-offset_y 0')
+    expect(s).toContain('-video_size 1920x1080')
+    expect(args).toContain('desktop')
   })
 })
 

@@ -134,6 +134,19 @@ export default function SettingsPage(): JSX.Element {
           </select>
         </label>
         <label className="field">
+          <span>屏幕直播采集的屏幕（放映 PPT 用）</span>
+          <select
+            value={settings.screenPreference}
+            onChange={(e) =>
+              set('screenPreference', e.target.value as AppSettings['screenPreference'])
+            }
+          >
+            <option value="auto">自动（接了外接屏时优先外接屏 — 推荐）</option>
+            <option value="external">外接屏幕（PPT 放映画面）</option>
+            <option value="primary">主屏幕（笔记本屏幕）</option>
+          </select>
+        </label>
+        <label className="field">
           <span>音频设备（默认自动匹配 Focusrite USB 声卡）</span>
           <select
             value={settings.audioDeviceId}

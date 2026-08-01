@@ -73,9 +73,21 @@ export function matchDeviceByLabel(devices: FfDevice[], label: string): FfDevice
   return hit ?? null
 }
 
-/** macOS 屏幕捕获设备（"Capture screen N"） */
-export function findScreenDevice(devices: FfDevice[]): FfDevice | null {
-  return devices.find((d) => /capture screen/i.test(d.name)) ?? null
+export type ScreenPreference = 'auto' | 'primary' | 'external'
+
+/**
+ * macOS 屏幕捕获设备（"Capture screen N"）选择：
+ * avfoundation 列表中第一块为主屏；auto/external 优先第二块（外接屏，PPT 放映画面），
+ * 无外接屏时回落主屏。
+ */
+export function pickScreenDevice(
+  devices: FfDevice[],
+  preference: ScreenPreference = 'auto'
+): FfDevice | null {
+  const screens = devices.filter((d) => /capture screen/i.test(d.name))
+  if (screens.length === 0) return null
+  if (preference === 'primary') return screens[0]
+  return screens[1] ?? screens[0]
 }
 
 export interface StreamProgress {

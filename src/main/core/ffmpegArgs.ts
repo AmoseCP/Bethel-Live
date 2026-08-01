@@ -28,6 +28,8 @@ export interface CaptureTarget {
   /** Windows：dshow 设备名称 */
   videoName?: string
   audioName?: string
+  /** Windows 屏幕采集区域（物理像素；缺省=整个虚拟桌面） */
+  screenRegion?: { x: number; y: number; width: number; height: number }
 }
 
 /** 低延迟 x264 + AAC 输出到 RTMP */
@@ -74,9 +76,15 @@ export function buildStreamArgs(
   // Windows
   if (target.source === 'screen') {
     if (!target.audioName) throw new Error('Windows 推流需要音频设备名称')
+    const grab = ['-f', 'gdigrab', '-framerate', String(o.fps)]
+    if (target.screenRegion) {
+      const r = target.screenRegion
+      grab.push('-offset_x', String(r.x), '-offset_y', String(r.y), '-video_size', `${r.width}x${r.height}`)
+    }
+    grab.push('-i', 'desktop')
     return [
       ...pre,
-      '-f', 'gdigrab', '-framerate', String(o.fps), '-i', 'desktop',
+      ...grab,
       '-f', 'dshow', '-i', `audio=${target.audioName}`,
       ...encodeArgs(o, rtmpUrl)
     ]
