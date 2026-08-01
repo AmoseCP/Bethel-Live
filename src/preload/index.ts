@@ -56,6 +56,9 @@ const api = {
     update: (patch: Partial<AppSettings>): Promise<AppSettings> =>
       ipcRenderer.invoke('settings:update', patch)
   },
+  telegram: {
+    send: (text: string): Promise<void> => ipcRenderer.invoke('telegram:send', text)
+  },
   media: {
     requestAccess: (kind: 'camera' | 'microphone'): Promise<boolean> =>
       ipcRenderer.invoke('media:requestAccess', kind)

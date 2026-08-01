@@ -5,6 +5,7 @@ import { useMediaPreview } from '../hooks/useMediaPreview'
 import AudioMeter from '../components/AudioMeter'
 import StatusBadge, { type LivePhase } from '../components/StatusBadge'
 import LiveTimer from '../components/LiveTimer'
+import ShareModal from '../components/ShareModal'
 
 interface StreamStats {
   fps: number
@@ -25,6 +26,7 @@ export default function LivePage(): JSX.Element {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const phaseRef = useRef<LivePhase>('idle')
   phaseRef.current = phase
@@ -273,6 +275,9 @@ export default function LivePage(): JSX.Element {
               <button className="btn" onClick={copyLink}>
                 {copied ? '✓ 已复制' : '复制链接'}
               </button>
+              <button className="btn" onClick={() => setShareOpen(true)}>
+                📤 分享到 Telegram
+              </button>
             </div>
 
             <div className="actions-row" style={{ marginTop: 14, marginBottom: 0 }}>
@@ -308,6 +313,13 @@ export default function LivePage(): JSX.Element {
         {busy && <p className="busy-tip">{busy}</p>}
         {error && <p className="error-tip">⚠ {error}</p>}
       </section>
+
+      {shareOpen && session && (
+        <ShareModal
+          initialText={`${session.broadcast.title}\n${session.shareLink}`}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </div>
   )
 }
