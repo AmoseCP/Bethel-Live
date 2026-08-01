@@ -18,6 +18,7 @@ export function registerIpcHandlers(): void {
 
   // macOS 首次访问摄像头/麦克风需要系统授权；其他平台直接放行
   ipcMain.handle('media:requestAccess', async (_e, kind: 'camera' | 'microphone') => {
+    if (process.env.BETHEL_FAKE_MEDIA === '1') return true
     if (process.platform !== 'darwin') return true
     const status = systemPreferences.getMediaAccessStatus(kind)
     if (status === 'granted') return true

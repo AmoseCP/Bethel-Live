@@ -237,3 +237,110 @@ body {
   line-height: 1.7;
   color: var(--text-dim);
 }
+
+/* ---------- 直播页 ---------- */
+.page-live {
+  max-width: 900px;
+}
+
+.live-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.live-header .page-title {
+  margin-bottom: 0;
+}
+
+.source-switch {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.switch-btn {
+  padding: 8px 16px;
+  border: none;
+  background: var(--bg-panel);
+  color: var(--text-dim);
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+}
+
+.switch-btn.active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.preview-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.preview-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.preview-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+  font-size: 14px;
+  background: rgba(13, 17, 23, 0.75);
+}
+
+/* ---------- 音频电平表 ---------- */
+.audio-meter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.meter-track {
+  flex: 1;
+  height: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3fb950 0%, #3fb950 60%, #d29922 80%, #f85149 100%);
+  background-size: 480px 100%;
+  transition: width 60ms linear;
+}
+
+.meter-db {
+  width: 56px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.meter-warn {
+  color: var(--warning);
+  font-size: 12px;
+}
+
+.meter-panel {
+  margin-bottom: 0;
+}
