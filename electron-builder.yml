@@ -9,6 +9,8 @@ files:
 extraResources:
   - from: resources/tray-icon.png
     to: tray-icon.png
+  - from: resources/tray-icon@2x.png
+    to: tray-icon@2x.png
   - from: resources/bin
     to: bin
     filter:

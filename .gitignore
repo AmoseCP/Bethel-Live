@@ -35,3 +35,6 @@ credentials*.json
 
 # 打包与E2E产物
 release/
+
+# 原始 Logo 素材（已复制到 assets/build/resources 三处）
+/logo.png

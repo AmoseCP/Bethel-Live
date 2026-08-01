@@ -1,5 +1,5 @@
 import { useState, type JSX } from 'react'
-import logoUrl from './assets/logo.svg'
+import logoUrl from './assets/logo.png'
 import LivePage from './pages/LivePage'
 import SettingsPage from './pages/SettingsPage'
 import AboutPage from './pages/AboutPage'
@@ -27,7 +27,6 @@ export default function App(): JSX.Element {
       {!mini && (
         <aside className="sidebar">
           <div className="sidebar-brand">
-            {/* Logo 占位：正式 Logo 到位后替换 src/renderer/src/assets/logo.svg */}
             <img src={logoUrl} alt="Bethel Live" className="logo-img" />
             <span className="brand-name">Bethel Live</span>
           </div>

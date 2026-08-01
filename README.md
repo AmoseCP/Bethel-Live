@@ -50,15 +50,13 @@ pnpm build:win      # 打包 Windows NSIS 安装包（在 Windows 上执行）
 
 **内置 FFmpeg（可选）**：把对应平台的 ffmpeg 静态可执行文件放入 `resources/bin/`（macOS 名为 `ffmpeg`，Windows 名为 `ffmpeg.exe`）再打包，即随应用分发；否则应用运行时使用系统 PATH 中的 ffmpeg。详见 `resources/bin/README.txt`。
 
-## 替换 Logo
+## Logo
 
-Logo 占位文件位置（拿到正式 Logo 后同名替换即可）：
+正式 Logo 已接入（源文件为项目根目录 `logo.png`，512×512）。日后更换 Logo 时，把新图（512×512 以上 PNG）覆盖以下三处后重新打包：
 
-- `src/renderer/src/assets/logo.svg` — 应用内界面 Logo
-- `resources/tray-icon.png` — 系统托盘图标（22×22 PNG）
-- `build/icon.png` — 打包图标源文件（1024×1024 PNG，electron-builder 自动生成各平台图标）
-
-替换后重新执行打包命令即可生效。
+- `src/renderer/src/assets/logo.png` — 应用内界面 Logo
+- `resources/tray-icon.png` / `resources/tray-icon@2x.png` — 系统托盘图标（22×22 / 44×44，可用 `sips -z` 从大图缩出）
+- `build/icon.png` — 打包图标源文件（electron-builder 自动生成各平台图标）
 
 ## 目录结构
 
