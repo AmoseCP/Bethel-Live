@@ -313,18 +313,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
       <section className="panel" style={{ marginTop: 16 }}>
         <h3 className="panel-title">直播流程</h3>
 
-        {authorized === false && (
-          <div className="actions-row" style={{ margin: 0 }}>
-            <button className="btn btn-primary" onClick={connectYouTube} disabled={busy !== null}>
-              连接 YouTube 账号
-            </button>
-            <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>
-              需先在「设置」中填写 Google API 凭据
-            </span>
-          </div>
-        )}
-
-        {authorized && !session && (
+        {!session && (
           <>
             <label className="field">
               <span>直播标题（按当天日期自动生成，可修改）</span>
@@ -344,13 +333,28 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
               <input value={description} onChange={(e) => setDescription(e.target.value)} />
             </label>
             <div className="actions-row" style={{ margin: 0 }}>
-              <button
-                className="btn btn-primary"
-                onClick={createLive}
-                disabled={busy !== null || !title.trim()}
-              >
-                🚀 一键创建直播
-              </button>
+              {authorized ? (
+                <button
+                  className="btn btn-primary"
+                  onClick={createLive}
+                  disabled={busy !== null || !title.trim()}
+                >
+                  🚀 一键创建直播
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="btn btn-primary"
+                    onClick={connectYouTube}
+                    disabled={busy !== null || authorized === null}
+                  >
+                    连接 YouTube 账号
+                  </button>
+                  <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>
+                    连接后即可用上方标题一键创建直播（需先在「设置」中填写 Google API 凭据）
+                  </span>
+                </>
+              )}
             </div>
 
             <div className="schedule-row">
@@ -363,7 +367,12 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
                     onChange={(e) => setScheduleTime(e.target.value)}
                     className="schedule-input"
                   />
-                  <button className="btn" onClick={armSchedule} disabled={!scheduleTime || busy !== null}>
+                  <button
+                    className="btn"
+                    onClick={armSchedule}
+                    disabled={!scheduleTime || busy !== null || !authorized}
+                    title={authorized ? '' : '需先连接 YouTube 账号'}
+                  >
                     启动定时
                   </button>
                 </>
