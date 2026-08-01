@@ -57,7 +57,11 @@ export function useMediaPreview(
           })
         }
       } catch (e) {
-        videoError = e instanceof Error ? e.message : String(e)
+        const raw = e instanceof Error ? e.message : String(e)
+        videoError =
+          source === 'screen'
+            ? `屏幕捕获失败（${raw}）。请到「系统设置 → 隐私与安全性 → 屏幕录制」中允许 Bethel Live（若已在列表中请先关再开），然后重启软件。`
+            : raw
       }
 
       let audio: MediaStream | null = null
