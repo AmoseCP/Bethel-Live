@@ -13,6 +13,7 @@ import {
 } from 'electron'
 import { join } from 'node:path'
 import { registerIpcHandlers } from './ipc'
+import { checkForUpdate } from './core/updateCheck'
 import { getSettings, updateSettings } from './settingsStore'
 import { isStreaming, stopStream } from './ffmpegService'
 
@@ -193,6 +194,20 @@ app.whenReady().then(() => {
 
   createTray()
   createMainWindow()
+
+  // 自动检查更新：启动 8 秒后一次，此后每 4 小时（测试环境跳过）
+  if (process.env.BETHEL_MOCK_API !== '1' && process.env.BETHEL_FAKE_MEDIA !== '1') {
+    const notifyUpdate = async (): Promise<void> => {
+      const r = await checkForUpdate(app.getVersion())
+      if (r.status === 'update-available') {
+        for (const w of BrowserWindow.getAllWindows()) {
+          w.webContents.send('update:available', r)
+        }
+      }
+    }
+    setTimeout(() => void notifyUpdate(), 8_000)
+    setInterval(() => void notifyUpdate(), 4 * 3600_000)
+  }
 
   app.on('activate', () => showMainWindow())
 })

@@ -1,4 +1,5 @@
 import { useEffect, useState, type JSX } from 'react'
+import type { UpdateCheckResult } from '../../shared/update'
 import { applyTheme } from './applyTheme'
 import logoUrl from './assets/logo.png'
 import LivePage from './pages/LivePage'
@@ -16,9 +17,11 @@ const NAV: { key: Page; label: string; icon: string }[] = [
 export default function App(): JSX.Element {
   const [page, setPage] = useState<Page>('live')
   const [mini, setMini] = useState(false)
+  const [update, setUpdate] = useState<UpdateCheckResult | null>(null)
 
   useEffect(() => {
     window.bethel.settings.get().then((s) => applyTheme(s.theme))
+    return window.bethel.onUpdateAvailable(setUpdate)
   }, [])
 
   const toggleMini = async (next: boolean): Promise<void> => {
@@ -50,6 +53,22 @@ export default function App(): JSX.Element {
         </aside>
       )}
       <main className="content">
+        {update && !mini && (
+          <div className="update-banner">
+            <span>
+              🎉 新版本 v{update.latestVersion} 已发布（当前 v{update.currentVersion}）
+            </span>
+            <button
+              className="btn btn-primary btn-banner"
+              onClick={() => window.bethel.openUrl(update.url!)}
+            >
+              前往下载
+            </button>
+            <button className="btn btn-banner" onClick={() => setUpdate(null)}>
+              稍后再说
+            </button>
+          </div>
+        )}
         {/* LivePage 常驻挂载：切页/迷你模式均不丢失直播会话状态 */}
         <div style={{ display: page === 'live' ? 'block' : 'none', height: '100%' }}>
           <LivePage mini={mini} onToggleMini={toggleMini} />

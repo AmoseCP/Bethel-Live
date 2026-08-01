@@ -25,6 +25,8 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
 const api = {
   getVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
   checkUpdate: (): Promise<UpdateCheckResult> => ipcRenderer.invoke('app:checkUpdate'),
+  onUpdateAvailable: (cb: (r: UpdateCheckResult) => void): (() => void) =>
+    subscribe('update:available', cb),
   openUrl: (url: string): Promise<void> => ipcRenderer.invoke('app:openUrl', url),
   live: {
     titleInfo: (): Promise<TitleInfo> => ipcRenderer.invoke('live:titleInfo')
