@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import type { AppSettings, VideoSourceKind } from '../../../shared/settings'
 import type { LiveSession } from '../../../shared/youtube'
+import { checkScheduleTime } from '../../../shared/schedule'
 import { useMediaPreview } from '../hooks/useMediaPreview'
 import AudioMeter from '../components/AudioMeter'
 import StatusBadge, { type LivePhase } from '../components/StatusBadge'
@@ -13,7 +14,12 @@ interface StreamStats {
   timeSec: number
 }
 
-export default function LivePage(): JSX.Element {
+interface Props {
+  mini: boolean
+  onToggleMini: (mini: boolean) => Promise<void>
+}
+
+export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [authorized, setAuthorized] = useState<boolean | null>(null)
   const [titleOptions, setTitleOptions] = useState<string[]>([])
@@ -27,7 +33,9 @@ export default function LivePage(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const [scheduleTime, setScheduleTime] = useState('')
+  const [scheduledAt, setScheduledAt] = useState<number | null>(null)
+  const [countdown, setCountdown] = useState('')
   const phaseRef = useRef<LivePhase>('idle')
   phaseRef.current = phase
 
@@ -61,9 +69,13 @@ export default function LivePage(): JSX.Element {
     settings !== null
   )
 
-  useEffect(() => {
-    if (videoRef.current) videoRef.current.srcObject = preview.videoStream
-  }, [preview.videoStream])
+  // 回调 ref：迷你/完整两套布局共用同一条预览流
+  const attachVideo = useCallback(
+    (el: HTMLVideoElement | null): void => {
+      if (el && el.srcObject !== preview.videoStream) el.srcObject = preview.videoStream
+    },
+    [preview.videoStream]
+  )
 
   const switchSource = async (next: VideoSourceKind): Promise<void> => {
     if (!settings || next === settings.videoSource) return
@@ -94,22 +106,20 @@ export default function LivePage(): JSX.Element {
       setPhase('created')
     })
 
-  /** 开始推流并进入 YouTube 测试阶段 */
-  const startTest = (): Promise<void> =>
-    run('正在启动推流并等待 YouTube 接收信号…', async () => {
-      if (!session) return
+  /** 启动推流 → 等 YouTube 收流 → 进入测试阶段（供手动与定时流程复用） */
+  const doStartTest = useCallback(
+    async (sess: LiveSession): Promise<void> => {
       await window.bethel.stream.start({
-        rtmpUrl: session.rtmpUrl,
+        rtmpUrl: sess.rtmpUrl,
         source,
         videoLabel: preview.videoStream?.getVideoTracks()[0]?.label ?? '',
         audioLabel: preview.audioStream?.getAudioTracks()[0]?.label ?? ''
       })
       setPhase('pushing')
 
-      // 轮询直到 YouTube 收到推流数据（最多 45 秒）
       let active = false
       for (let i = 0; i < 22; i++) {
-        const s = await window.bethel.youtube.streamStatus(session.stream.streamId)
+        const s = await window.bethel.youtube.streamStatus(sess.stream.streamId)
         if (s.status === 'active') {
           active = true
           break
@@ -122,8 +132,15 @@ export default function LivePage(): JSX.Element {
         throw new Error('YouTube 未在 45 秒内收到推流信号，请检查网络与设备后重试')
       }
 
-      await window.bethel.youtube.transition(session.broadcast.broadcastId, 'testing')
+      await window.bethel.youtube.transition(sess.broadcast.broadcastId, 'testing')
       setPhase('testing')
+    },
+    [source, preview.videoStream, preview.audioStream]
+  )
+
+  const startTest = (): Promise<void> =>
+    run('正在启动推流并等待 YouTube 接收信号…', async () => {
+      if (session) await doStartTest(session)
     })
 
   const goLive = (): Promise<void> =>
@@ -146,6 +163,49 @@ export default function LivePage(): JSX.Element {
       setPhase('complete')
       setLiveStartAt(null)
     })
+
+  /** 定时到点：创建 → 推流测试 → 直接开播 */
+  const autoStart = useCallback((): Promise<void> => {
+    return run('定时开播：正在自动创建并开始直播…', async () => {
+      const sess = await window.bethel.youtube.createLive(title, description)
+      setSession(sess)
+      setPhase('created')
+      await doStartTest(sess)
+      await window.bethel.youtube.transition(sess.broadcast.broadcastId, 'live')
+      setPhase('live')
+      setLiveStartAt(Date.now())
+    })
+  }, [run, doStartTest, title, description])
+  const autoStartRef = useRef(autoStart)
+  autoStartRef.current = autoStart
+
+  // 定时触发与倒计时
+  useEffect(() => {
+    if (scheduledAt === null) return
+    const t = setInterval(() => {
+      const remain = scheduledAt - Date.now()
+      if (remain <= 0) {
+        setScheduledAt(null)
+        setCountdown('')
+        void autoStartRef.current()
+        return
+      }
+      const m = Math.floor(remain / 60000)
+      const s = Math.floor((remain % 60000) / 1000)
+      setCountdown(`${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`)
+    }, 500)
+    return () => clearInterval(t)
+  }, [scheduledAt])
+
+  const armSchedule = (): void => {
+    const check = checkScheduleTime(scheduleTime, new Date())
+    if (!check.valid) {
+      setError(check.reason ?? '定时时间无效')
+      return
+    }
+    setError(null)
+    setScheduledAt(check.target!.getTime())
+  }
 
   const resetSession = (): void => {
     setSession(null)
@@ -171,6 +231,32 @@ export default function LivePage(): JSX.Element {
 
   const streamingActive = phase === 'pushing' || phase === 'testing' || phase === 'live'
 
+  // ---------- 迷你模式 ----------
+  if (mini) {
+    return (
+      <div className="mini-view">
+        <video ref={attachVideo} autoPlay muted playsInline className="mini-video" />
+        <div className="mini-overlay">
+          <div className="mini-top">
+            <StatusBadge phase={phase} />
+            {phase === 'live' && liveStartAt && <LiveTimer since={liveStartAt} />}
+          </div>
+          <div className="mini-actions">
+            {(phase === 'testing' || phase === 'live') && (
+              <button className="btn btn-danger btn-mini" onClick={endLive} disabled={busy !== null}>
+                ⏹
+              </button>
+            )}
+            <button className="btn btn-mini" onClick={() => onToggleMini(false)} title="返回完整界面">
+              ⤢
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ---------- 完整界面 ----------
   return (
     <div className="page page-live">
       <div className="live-header">
@@ -179,26 +265,31 @@ export default function LivePage(): JSX.Element {
           <StatusBadge phase={phase} />
           {phase === 'live' && liveStartAt && <LiveTimer since={liveStartAt} />}
         </div>
-        <div className="source-switch">
-          <button
-            className={`switch-btn ${source === 'camera' ? 'active' : ''}`}
-            onClick={() => switchSource('camera')}
-            disabled={streamingActive}
-          >
-            📷 摄像机
+        <div className="live-header-right">
+          <button className="btn btn-icon" onClick={() => onToggleMini(true)} title="迷你模式">
+            ⧉
           </button>
-          <button
-            className={`switch-btn ${source === 'screen' ? 'active' : ''}`}
-            onClick={() => switchSource('screen')}
-            disabled={streamingActive}
-          >
-            🖥 本机屏幕
-          </button>
+          <div className="source-switch">
+            <button
+              className={`switch-btn ${source === 'camera' ? 'active' : ''}`}
+              onClick={() => switchSource('camera')}
+              disabled={streamingActive}
+            >
+              📷 摄像机
+            </button>
+            <button
+              className={`switch-btn ${source === 'screen' ? 'active' : ''}`}
+              onClick={() => switchSource('screen')}
+              disabled={streamingActive}
+            >
+              🖥 本机屏幕
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="preview-box">
-        <video ref={videoRef} autoPlay muted playsInline className="preview-video" />
+        <video ref={attachVideo} autoPlay muted playsInline className="preview-video" />
         {!hasSignal && (
           <div className="preview-overlay">
             {preview.videoError ? `⚠ 无法打开视频源：${preview.videoError}` : '正在等待视频信号…'}
@@ -260,6 +351,32 @@ export default function LivePage(): JSX.Element {
               >
                 🚀 一键创建直播
               </button>
+            </div>
+
+            <div className="schedule-row">
+              {scheduledAt === null ? (
+                <>
+                  <span className="schedule-label">⏰ 定时直播（今天）</span>
+                  <input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="schedule-input"
+                  />
+                  <button className="btn" onClick={armSchedule} disabled={!scheduleTime || busy !== null}>
+                    启动定时
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="schedule-armed">
+                    ⏰ 将于 {scheduleTime} 自动开播（倒计时 {countdown || '…'}）
+                  </span>
+                  <button className="btn" onClick={() => setScheduledAt(null)}>
+                    取消定时
+                  </button>
+                </>
+              )}
             </div>
           </>
         )}

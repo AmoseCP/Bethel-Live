@@ -56,6 +56,9 @@ const api = {
     update: (patch: Partial<AppSettings>): Promise<AppSettings> =>
       ipcRenderer.invoke('settings:update', patch)
   },
+  window: {
+    setMini: (mini: boolean): Promise<void> => ipcRenderer.invoke('window:setMini', mini)
+  },
   telegram: {
     send: (text: string): Promise<void> => ipcRenderer.invoke('telegram:send', text)
   },

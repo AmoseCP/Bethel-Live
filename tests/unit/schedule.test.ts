@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkScheduleTime } from '../../src/main/core/schedule'
+import { checkScheduleTime } from '../../src/shared/schedule'
 
 const now = new Date(2026, 7, 1, 10, 30, 0) // 2026-08-01 10:30:00
 
