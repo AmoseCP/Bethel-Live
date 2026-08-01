@@ -29,3 +29,6 @@ Thumbs.db
 .env.*
 *.pem
 credentials*.json
+
+# TS 增量构建缓存
+*.tsbuildinfo
