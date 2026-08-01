@@ -33,3 +33,4 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   shortcutName: Bethel Live
+publish: null
