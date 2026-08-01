@@ -92,12 +92,15 @@ export function buildStreamArgs(
   if (!target.videoName || !target.audioName) {
     throw new Error('Windows 推流需要视频与音频设备名称')
   }
+  // 视频/音频拆成两个独立输入：设备名含 ':' 时组合串会解析错位
   return [
     ...pre,
     '-f', 'dshow',
     '-framerate', String(o.fps),
     '-video_size', `${o.width}x${o.height}`,
-    '-i', `video=${target.videoName}:audio=${target.audioName}`,
+    '-i', `video=${target.videoName}`,
+    '-f', 'dshow',
+    '-i', `audio=${target.audioName}`,
     ...encodeArgs(o, rtmpUrl)
   ]
 }

@@ -55,7 +55,7 @@ export interface StreamStartOptions {
 }
 
 let current: ChildProcess | null = null
-let lastLogTail: string[] = []
+let starting = false
 
 function broadcast(channel: string, payload: unknown): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -69,8 +69,19 @@ export function isStreaming(): boolean {
 
 /** 启动推流；进度经 'stream:stats' 广播，退出经 'stream:exit' 广播 */
 export async function startStream(opts: StreamStartOptions): Promise<void> {
-  if (current) throw new Error('已有推流进行中')
+  if (current || starting) throw new Error('已有推流进行中')
+  if (!/^rtmps?:\/\/[a-z0-9.-]+\.youtube\.com\//i.test(opts.rtmpUrl)) {
+    throw new Error('无效的推流地址（仅支持 YouTube RTMP）')
+  }
+  starting = true
+  try {
+    await startStreamInner(opts)
+  } finally {
+    starting = false
+  }
+}
 
+async function startStreamInner(opts: StreamStartOptions): Promise<void> {
   const devices = await listCaptureDevices()
   const target: CaptureTarget = {
     platform: process.platform === 'darwin' ? 'darwin' : 'win32',
@@ -93,12 +104,9 @@ export async function startStream(opts: StreamStartOptions): Promise<void> {
     const primary = screen.getPrimaryDisplay()
     const externals = screen.getAllDisplays().filter((d) => d.id !== primary.id)
     const chosen = pref === 'primary' ? primary : (externals[0] ?? primary)
-    target.screenRegion = {
-      x: Math.round(chosen.bounds.x * chosen.scaleFactor),
-      y: Math.round(chosen.bounds.y * chosen.scaleFactor),
-      width: Math.round(chosen.bounds.width * chosen.scaleFactor),
-      height: Math.round(chosen.bounds.height * chosen.scaleFactor)
-    }
+    // 混合 DPI 多屏下 bounds×scaleFactor 会算错物理原点，用系统换算
+    const rect = screen.dipToScreenRect(null, chosen.bounds)
+    target.screenRegion = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
   } else if (opts.source === 'camera') {
     const video =
       matchDeviceByLabel(devices.video, opts.videoLabel) ??
@@ -114,14 +122,23 @@ export async function startStream(opts: StreamStartOptions): Promise<void> {
   const args = buildStreamArgs(target, opts.rtmpUrl, DEFAULT_ENCODE)
   const child = spawn(ffmpegPath(), args, { stdio: ['pipe', 'ignore', 'pipe'] })
   current = child
-  lastLogTail = []
+
+  // 每个进程独享日志尾（重启推流后旧进程 exit 事件不会读到新进程日志）
+  const logTail: string[] = []
+  // 日志中的推流密钥脱敏（stderr 会原样打印输出 URL）
+  const streamKey = opts.rtmpUrl.split('/').pop() ?? ''
+  const redact = (line: string): string =>
+    streamKey.length >= 8 ? line.split(streamKey).join('****') : line
+
+  // ffmpeg 刚退出瞬间对 stdin 的写入会以异步 error 事件抛出，必须兜底防主进程崩溃
+  child.stdin?.on('error', () => {})
 
   child.stderr.setEncoding('utf8')
   child.stderr.on('data', (chunk: string) => {
     for (const line of chunk.split(/\r|\n/)) {
       if (!line.trim()) continue
-      lastLogTail.push(line)
-      if (lastLogTail.length > 40) lastLogTail.shift()
+      logTail.push(redact(line))
+      if (logTail.length > 40) logTail.shift()
       const progress = parseProgressLine(line)
       if (progress) broadcast('stream:stats', progress)
     }
@@ -133,7 +150,7 @@ export async function startStream(opts: StreamStartOptions): Promise<void> {
     broadcast('stream:exit', {
       code,
       expected: !wasCurrent || code === 0 || code === 255,
-      logTail: lastLogTail.slice(-8).join('\n')
+      logTail: logTail.slice(-8).join('\n')
     })
   })
 
@@ -142,7 +159,7 @@ export async function startStream(opts: StreamStartOptions): Promise<void> {
     const timer = setTimeout(resolve, 3000)
     child.once('exit', (code) => {
       clearTimeout(timer)
-      reject(new Error(`FFmpeg 启动失败（退出码 ${code}）：\n${lastLogTail.slice(-6).join('\n')}`))
+      reject(new Error(`FFmpeg 启动失败（退出码 ${code}）：\n${logTail.slice(-6).join('\n')}`))
     })
     child.once('error', (e) => {
       clearTimeout(timer)

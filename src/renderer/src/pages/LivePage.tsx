@@ -44,15 +44,28 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   const lastReconnectAt = useRef(0)
   const defaultDescRef = useRef('')
 
+  const defaultTitleRef = useRef('')
+
+  const refreshTitleInfo = useCallback((): void => {
+    window.bethel.live.titleInfo().then((info) => {
+      setTitleOptions(info.options)
+      if (phaseRef.current === 'idle' || defaultTitleRef.current === '') {
+        // 仅当用户没手动改过标题/描述时才替换为新默认值（托盘常驻跨天场景）
+        const oldTitle = defaultTitleRef.current
+        defaultTitleRef.current = info.defaultTitle
+        setTitle((prev) => (prev === oldTitle || prev === '' ? info.defaultTitle : prev))
+        const oldDesc = defaultDescRef.current
+        defaultDescRef.current = info.defaultDescription
+        setDescription((prev) => (prev === oldDesc || prev === '' ? info.defaultDescription : prev))
+      }
+    })
+  }, [])
+
   useEffect(() => {
     window.bethel.settings.get().then(setSettings)
     window.bethel.youtube.isAuthorized().then(setAuthorized)
-    window.bethel.live.titleInfo().then((info) => {
-      setTitleOptions(info.options)
-      setTitle(info.defaultTitle)
-      setDescription(info.defaultDescription)
-      defaultDescRef.current = info.defaultDescription
-    })
+    refreshTitleInfo()
+    window.addEventListener('focus', refreshTitleInfo)
     const offStats = window.bethel.stream.onStats(setStats)
     // 设置页改动实时同步（设备/屏幕偏好/默认描述等）
     const offSettings = window.bethel.settings.onChanged((s) => {
@@ -99,11 +112,12 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
       }
     })
     return () => {
+      window.removeEventListener('focus', refreshTitleInfo)
       offStats()
       offSettings()
       offExit()
     }
-  }, [])
+  }, [refreshTitleInfo])
 
   const source: VideoSourceKind = settings?.videoSource ?? 'camera'
   const preview = useMediaPreview(
@@ -147,7 +161,9 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
     try {
       await fn()
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      const msg = e instanceof Error ? e.message : String(e)
+      setError(msg)
+      if (/授权已失效/.test(msg)) setAuthorized(false)
     } finally {
       setBusy(null)
     }
@@ -161,6 +177,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
 
   const createLive = (): Promise<void> =>
     run('正在创建直播…', async () => {
+      setScheduledAt(null) // 手动创建后解除已武装的定时，避免到点重复开播
       setSession(await window.bethel.youtube.createLive(title, description))
       setPhase('created')
     })
@@ -178,25 +195,26 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
       lastStartOpts.current = startOpts
       setPhase('pushing')
 
-      let active = false
-      for (let i = 0; i < 22; i++) {
-        const s = await window.bethel.youtube.streamStatus(sess.stream.streamId)
-        if (s.status === 'active') {
-          active = true
-          break
-        }
-        await new Promise((r) => setTimeout(r, 2000))
-      }
-      if (!active) {
-        await window.bethel.stream.stop()
-        setPhase('created')
-        throw new Error('YouTube 未在 45 秒内收到推流信号，请检查网络与设备后重试')
-      }
-
+      // 此后任一步失败：停流并回退，绝不把界面留在 pushing 且 ffmpeg 还在跑
       try {
+        let active = false
+        for (let i = 0; i < 22; i++) {
+          if (!(await window.bethel.stream.isActive())) {
+            throw new Error('推流进程已退出，请查看上方错误信息后重试')
+          }
+          const s = await window.bethel.youtube.streamStatus(sess.stream.streamId)
+          if (s.status === 'active') {
+            active = true
+            break
+          }
+          await new Promise((r) => setTimeout(r, 2000))
+        }
+        if (!active) {
+          throw new Error('YouTube 未在 45 秒内收到推流信号，请检查网络与设备后重试')
+        }
         await window.bethel.youtube.transition(sess.broadcast.broadcastId, 'testing')
       } catch (e) {
-        await window.bethel.stream.stop()
+        await window.bethel.stream.stop().catch(() => {})
         setPhase('created')
         throw e
       }
@@ -221,18 +239,26 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   const endLive = (): Promise<void> =>
     run('正在结束直播…', async () => {
       if (!session) return
+      const before = phaseRef.current
       setPhase('ending')
       try {
         await window.bethel.youtube.transition(session.broadcast.broadcastId, 'complete')
-      } finally {
-        await window.bethel.stream.stop()
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        // 广播已被 YouTube 自动结束（redundant/invalid transition）视为结束成功
+        if (!/redundant|invalid/i.test(msg)) {
+          setPhase(before) // 回退，保留"结束直播"按钮可重试
+          throw e
+        }
       }
+      await window.bethel.stream.stop()
       setPhase('complete')
       setLiveStartAt(null)
     })
 
   /** 定时到点：创建 → 推流测试 → 直接开播 */
   const autoStart = useCallback((): Promise<void> => {
+    if (phaseRef.current !== 'idle') return Promise.resolve() // 已手动开播则忽略定时触发
     return run('定时开播：正在自动创建并开始直播…', async () => {
       const sess = await window.bethel.youtube.createLive(title, description)
       setSession(sess)

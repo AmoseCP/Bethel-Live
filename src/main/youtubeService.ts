@@ -80,8 +80,12 @@ export async function signIn(): Promise<void> {
         )
         server.close()
       }
+      // state 不符的请求（浏览器预取/其他进程误触）只拒绝该请求，服务器继续等待真实回调
+      if (url.searchParams.get('state') !== state) {
+        res.writeHead(400).end()
+        return
+      }
       try {
-        if (url.searchParams.get('state') !== state) throw new Error('state 校验失败')
         const err = url.searchParams.get('error')
         if (err) throw new Error(`Google 返回错误：${err}`)
         const code = url.searchParams.get('code')
@@ -123,7 +127,17 @@ async function getAccessToken(): Promise<string> {
   if (!tokens) throw new Error('尚未连接 YouTube 账号，请先授权')
   if (isExpired(tokens)) {
     const { googleClientId, googleClientSecret } = getSettings()
-    tokens = await refreshAccessToken(tokens, googleClientId, googleClientSecret, fetch)
+    try {
+      tokens = await refreshAccessToken(tokens, googleClientId, googleClientSecret, fetch)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (/invalid_grant/i.test(msg)) {
+        // 授权已被撤销：清除失效令牌，让界面回到"连接 YouTube 账号"状态
+        signOut()
+        throw new Error('YouTube 授权已失效，请重新连接账号')
+      }
+      throw e
+    }
     saveTokens(tokens)
   }
   return tokens.accessToken

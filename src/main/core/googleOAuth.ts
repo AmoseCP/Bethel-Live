@@ -36,7 +36,8 @@ async function tokenRequest(
   const res = await fetchFn(TOKEN_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(params).toString()
+    body: new URLSearchParams(params).toString(),
+    signal: AbortSignal.timeout(15_000)
   })
   const data = (await res.json()) as Record<string, unknown>
   if (!res.ok) {

@@ -52,7 +52,10 @@ describe('buildStreamArgs — Windows', () => {
     )
     const s = args.join(' ')
     expect(s).toContain('-f dshow')
-    expect(args).toContain('video=StreamLine Mini+ GC311G2:audio=Analogue 1 + 2 (Focusrite USB Audio)')
+    // 视频/音频为两个独立输入（设备名含冒号也安全）
+    expect(args).toContain('video=StreamLine Mini+ GC311G2')
+    expect(args).toContain('audio=Analogue 1 + 2 (Focusrite USB Audio)')
+    expect(s).not.toContain('video=StreamLine Mini+ GC311G2:audio=')
   })
 
   it('屏幕：gdigrab desktop + dshow 音频', () => {

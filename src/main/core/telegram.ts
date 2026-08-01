@@ -18,7 +18,8 @@ export async function sendTelegramMessage(
   const res = await fetchFn(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text })
+    body: JSON.stringify({ chat_id: chatId, text }),
+    signal: AbortSignal.timeout(15_000)
   })
   const data = (await res.json().catch(() => ({}))) as {
     ok?: boolean

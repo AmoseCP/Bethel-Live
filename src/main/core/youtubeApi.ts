@@ -42,7 +42,8 @@ export class YouTubeApi {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: body === undefined ? undefined : JSON.stringify(body)
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000)
     })
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
     if (!res.ok) {

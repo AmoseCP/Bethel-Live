@@ -1,6 +1,6 @@
 /** IPC 注册：渲染进程唯一入口（preload 桥调用） */
 import { app, BrowserWindow, ipcMain, systemPreferences } from 'electron'
-import { AppSettings } from '../shared/settings'
+import { AppSettings, DEFAULT_SETTINGS } from '../shared/settings'
 import { getSettings, updateSettings } from './settingsStore'
 import { getDefaultTitle, getTitleOptions } from './core/titleGenerator'
 import * as yt from './youtubeService'
@@ -11,6 +11,7 @@ import { shell } from 'electron'
 
 /** E2E 模式：YouTube/Telegram/FFmpeg 走内置假实现，覆盖完整用户流程而不触网 */
 const MOCK_API = process.env.BETHEL_MOCK_API === '1'
+let mockStreaming = false
 
 function mockSession(title: string): unknown {
   return {
@@ -70,15 +71,35 @@ export function registerIpcHandlers(): void {
   })
 
   // ---- FFmpeg 推流 ----
-  ipcMain.handle('stream:start', (_e, opts: ff.StreamStartOptions) =>
-    MOCK_API ? undefined : ff.startStream(opts)
-  )
-  ipcMain.handle('stream:stop', () => (MOCK_API ? undefined : ff.stopStream()))
-  ipcMain.handle('stream:isActive', () => (MOCK_API ? false : ff.isStreaming()))
+  ipcMain.handle('stream:start', (_e, opts: ff.StreamStartOptions) => {
+    if (MOCK_API) {
+      mockStreaming = true
+      return
+    }
+    return ff.startStream(opts)
+  })
+  ipcMain.handle('stream:stop', () => {
+    if (MOCK_API) {
+      mockStreaming = false
+      return
+    }
+    return ff.stopStream()
+  })
+  ipcMain.handle('stream:isActive', () => (MOCK_API ? mockStreaming : ff.isStreaming()))
 
   ipcMain.handle('settings:get', () => getSettings())
 
-  ipcMain.handle('settings:update', (_e, patch: Partial<AppSettings>) => {
+  ipcMain.handle('settings:update', (_e, rawPatch: Partial<AppSettings>) => {
+    // 白名单过滤：只接受已知键且类型一致的字段
+    const patch: Partial<AppSettings> = {}
+    if (typeof rawPatch === 'object' && rawPatch !== null) {
+      for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof AppSettings)[]) {
+        const v = (rawPatch as Record<string, unknown>)[key]
+        if (v !== undefined && typeof v === typeof DEFAULT_SETTINGS[key]) {
+          ;(patch as Record<string, unknown>)[key] = v
+        }
+      }
+    }
     const next = updateSettings(patch)
     if ('launchAtLogin' in patch) {
       app.setLoginItemSettings({ openAtLogin: next.launchAtLogin })

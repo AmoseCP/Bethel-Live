@@ -197,8 +197,16 @@ app.whenReady().then(() => {
   app.on('activate', () => showMainWindow())
 })
 
-app.on('before-quit', () => {
+app.on('before-quit', (e) => {
+  if (isQuitting) return
   isQuitting = true
+  // Cmd+Q / 系统注销等路径也要先停掉 ffmpeg，否则子进程成为孤儿继续占用摄像头推流
+  if (isStreaming()) {
+    e.preventDefault()
+    stopStream()
+      .catch(() => {})
+      .finally(() => app.quit())
+  }
 })
 
 app.on('window-all-closed', () => {

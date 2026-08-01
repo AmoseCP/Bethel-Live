@@ -35,8 +35,10 @@ export default function SettingsPage(): JSX.Element {
   const [videoDevices, setVideoDevices] = useState<DeviceOption[]>([])
   const [audioDevices, setAudioDevices] = useState<DeviceOption[]>([])
   const [savedTip, setSavedTip] = useState(false)
+  const [ytConnected, setYtConnected] = useState<boolean | null>(null)
 
   useEffect(() => {
+    window.bethel.youtube.isAuthorized().then(setYtConnected)
     window.bethel.settings.get().then(setSettings)
     enumerateInputs().then(({ video, audio }) => {
       setVideoDevices(video)
@@ -84,6 +86,23 @@ export default function SettingsPage(): JSX.Element {
             onChange={(e) => set('googleClientSecret', e.target.value)}
           />
         </label>
+        <div className="field-inline" style={{ marginTop: 4 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+            YouTube 账号：{ytConnected === null ? '…' : ytConnected ? '✓ 已连接' : '未连接（去「直播」页连接）'}
+          </span>
+          {ytConnected && (
+            <button
+              className="btn"
+              style={{ padding: '4px 12px', fontSize: 12 }}
+              onClick={async () => {
+                await window.bethel.youtube.signOut()
+                setYtConnected(false)
+              }}
+            >
+              断开连接
+            </button>
+          )}
+        </div>
       </section>
 
       <section className="panel">
