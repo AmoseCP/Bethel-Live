@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'node:path'
+import { registerIpcHandlers } from './ipc'
 
 const isDev = !app.isPackaged
 
@@ -42,6 +43,7 @@ function createMainWindow(): void {
 }
 
 app.whenReady().then(() => {
+  registerIpcHandlers()
   createMainWindow()
 
   app.on('activate', () => {
