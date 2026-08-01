@@ -1,4 +1,5 @@
-import { useState, type JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
+import { applyTheme } from './applyTheme'
 import logoUrl from './assets/logo.png'
 import LivePage from './pages/LivePage'
 import SettingsPage from './pages/SettingsPage'
@@ -15,6 +16,10 @@ const NAV: { key: Page; label: string; icon: string }[] = [
 export default function App(): JSX.Element {
   const [page, setPage] = useState<Page>('live')
   const [mini, setMini] = useState(false)
+
+  useEffect(() => {
+    window.bethel.settings.get().then((s) => applyTheme(s.theme))
+  }, [])
 
   const toggleMini = async (next: boolean): Promise<void> => {
     await window.bethel.window.setMini(next)

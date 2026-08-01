@@ -22,6 +22,10 @@ test('设置：修改并保存后跨重启保留', async () => {
     await desc.fill('E2E 修改的描述')
     await first.page.getByRole('button', { name: '保存设置' }).click()
     await expect(first.page.locator('.saved-tip')).toBeVisible()
+
+    // 主题：点击色板立即生效
+    await first.page.locator('.theme-swatch', { hasText: '浅粉' }).click()
+    await expect(first.page.locator('html')).toHaveAttribute('data-theme', 'pink')
   } finally {
     await first.app.close()
   }
@@ -33,6 +37,8 @@ test('设置：修改并保存后跨重启保留', async () => {
     await expect(
       second.page.locator('.field', { hasText: '默认直播描述' }).locator('input')
     ).toHaveValue('E2E 修改的描述')
+    // 主题跨重启保留
+    await expect(second.page.locator('html')).toHaveAttribute('data-theme', 'pink')
   } finally {
     await second.app.close()
   }

@@ -1,5 +1,7 @@
 import { useEffect, useState, type JSX } from 'react'
 import type { AppSettings } from '../../../shared/settings'
+import { THEME_OPTIONS, type ThemeKind } from '../../../shared/theme'
+import { applyTheme } from '../applyTheme'
 
 interface DeviceOption {
   deviceId: string
@@ -46,6 +48,12 @@ export default function SettingsPage(): JSX.Element {
 
   const set = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void =>
     setSettings({ ...settings, [key]: value })
+
+  /** 主题：点击立即生效并持久化（无需点保存） */
+  const setTheme = async (theme: ThemeKind): Promise<void> => {
+    applyTheme(theme)
+    setSettings(await window.bethel.settings.update({ theme }))
+  }
 
   const save = async (): Promise<void> => {
     const next = await window.bethel.settings.update(settings)
@@ -139,6 +147,24 @@ export default function SettingsPage(): JSX.Element {
             ))}
           </select>
         </label>
+      </section>
+
+      <section className="panel">
+        <h3 className="panel-title">外观主题</h3>
+        <div className="theme-picker">
+          {THEME_OPTIONS.map((t) => (
+            <button
+              key={t.key}
+              className={`theme-swatch ${settings.theme === t.key ? 'active' : ''}`}
+              onClick={() => {
+                setTheme(t.key)
+              }}
+            >
+              <span className="dot" style={{ background: t.swatch }} />
+              {t.label}
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="panel">
