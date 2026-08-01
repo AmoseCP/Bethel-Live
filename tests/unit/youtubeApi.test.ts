@@ -25,7 +25,9 @@ describe('YouTubeApi', () => {
     expect(init.headers.Authorization).toBe('Bearer TOKEN')
     const body = JSON.parse(init.body)
     expect(body.snippet).toEqual({ title: 'T', description: 'D', scheduledStartTime: '2026-08-01T10:00:00Z' })
-    expect(body.status.privacyStatus).toBe('public')
+    // 默认与 YouTube 手动 Go Live 的常用选择一致：不公开列出 + 非儿童内容
+    expect(body.status.privacyStatus).toBe('unlisted')
+    expect(body.status.selfDeclaredMadeForKids).toBe(false)
   })
 
   it('createStream：返回推流地址与 key', async () => {

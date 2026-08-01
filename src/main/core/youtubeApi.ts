@@ -56,7 +56,7 @@ export class YouTubeApi {
     return data as T
   }
 
-  /** 创建广播（公开、手动开始、常规延迟） */
+  /** 创建广播（默认不公开列出 unlisted、非儿童内容、手动开始） */
   async createBroadcast(
     title: string,
     description: string,
@@ -68,7 +68,7 @@ export class YouTubeApi {
       status: { lifeCycleStatus: BroadcastLifeCycle }
     }>('POST', '/liveBroadcasts', { part: 'snippet,contentDetails,status' }, {
       snippet: { title, description, scheduledStartTime },
-      status: { privacyStatus: 'public', selfDeclaredMadeForKids: false },
+      status: { privacyStatus: 'unlisted', selfDeclaredMadeForKids: false },
       contentDetails: {
         enableAutoStart: false,
         enableAutoStop: true,
