@@ -2,9 +2,38 @@
 import { app, ipcMain, systemPreferences } from 'electron'
 import { AppSettings } from '../shared/settings'
 import { getSettings, updateSettings } from './settingsStore'
+import { getDefaultTitle, getTitleOptions } from './core/titleGenerator'
+import * as yt from './youtubeService'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('app:version', () => app.getVersion())
+
+  // ---- 直播标题 ----
+  ipcMain.handle('live:titleInfo', () => {
+    const now = new Date()
+    return {
+      options: getTitleOptions(now),
+      defaultTitle: getDefaultTitle(now),
+      defaultDescription: getSettings().defaultDescription
+    }
+  })
+
+  // ---- YouTube ----
+  ipcMain.handle('youtube:isAuthorized', () => yt.isAuthorized())
+  ipcMain.handle('youtube:signIn', () => yt.signIn())
+  ipcMain.handle('youtube:signOut', () => yt.signOut())
+  ipcMain.handle('youtube:createLive', (_e, title: string, description: string) =>
+    yt.createLive(title, description)
+  )
+  ipcMain.handle('youtube:transition', (_e, broadcastId: string, to: 'testing' | 'live' | 'complete') =>
+    yt.youtubeApi.transition(broadcastId, to)
+  )
+  ipcMain.handle('youtube:streamStatus', (_e, streamId: string) =>
+    yt.youtubeApi.getStreamStatus(streamId)
+  )
+  ipcMain.handle('youtube:broadcastStatus', (_e, broadcastId: string) =>
+    yt.youtubeApi.getBroadcastStatus(broadcastId)
+  )
 
   ipcMain.handle('settings:get', () => getSettings())
 
