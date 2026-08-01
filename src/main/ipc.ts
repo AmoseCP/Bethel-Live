@@ -4,6 +4,7 @@ import { AppSettings } from '../shared/settings'
 import { getSettings, updateSettings } from './settingsStore'
 import { getDefaultTitle, getTitleOptions } from './core/titleGenerator'
 import * as yt from './youtubeService'
+import * as ff from './ffmpegService'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('app:version', () => app.getVersion())
@@ -34,6 +35,11 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('youtube:broadcastStatus', (_e, broadcastId: string) =>
     yt.youtubeApi.getBroadcastStatus(broadcastId)
   )
+
+  // ---- FFmpeg 推流 ----
+  ipcMain.handle('stream:start', (_e, opts: ff.StreamStartOptions) => ff.startStream(opts))
+  ipcMain.handle('stream:stop', () => ff.stopStream())
+  ipcMain.handle('stream:isActive', () => ff.isStreaming())
 
   ipcMain.handle('settings:get', () => getSettings())
 

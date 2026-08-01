@@ -1,6 +1,24 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import type { AppSettings } from '../shared/settings'
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import type { AppSettings, VideoSourceKind } from '../shared/settings'
 import type { BroadcastLifeCycle, LiveSession, TitleInfo } from '../shared/youtube'
+
+export interface StreamProgress {
+  fps: number
+  bitrateKbps: number
+  timeSec: number
+}
+
+export interface StreamExitInfo {
+  code: number | null
+  expected: boolean
+  logTail: string
+}
+
+function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
+  const listener = (_e: IpcRendererEvent, payload: T): void => cb(payload)
+  ipcRenderer.on(channel, listener)
+  return () => ipcRenderer.removeListener(channel, listener)
+}
 
 // 渲染进程可用的 API 桥，随阶段逐步扩充
 const api = {
@@ -20,6 +38,18 @@ const api = {
       ipcRenderer.invoke('youtube:streamStatus', streamId),
     broadcastStatus: (broadcastId: string): Promise<BroadcastLifeCycle> =>
       ipcRenderer.invoke('youtube:broadcastStatus', broadcastId)
+  },
+  stream: {
+    start: (opts: {
+      rtmpUrl: string
+      source: VideoSourceKind
+      videoLabel: string
+      audioLabel: string
+    }): Promise<void> => ipcRenderer.invoke('stream:start', opts),
+    stop: (): Promise<void> => ipcRenderer.invoke('stream:stop'),
+    isActive: (): Promise<boolean> => ipcRenderer.invoke('stream:isActive'),
+    onStats: (cb: (p: StreamProgress) => void): (() => void) => subscribe('stream:stats', cb),
+    onExit: (cb: (p: StreamExitInfo) => void): (() => void) => subscribe('stream:exit', cb)
   },
   settings: {
     get: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
