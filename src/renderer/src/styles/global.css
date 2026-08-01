@@ -799,3 +799,8 @@ body {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent);
 }
+
+.btn-mini-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}

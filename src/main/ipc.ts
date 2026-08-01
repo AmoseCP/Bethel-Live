@@ -1,5 +1,5 @@
 /** IPC 注册：渲染进程唯一入口（preload 桥调用） */
-import { app, ipcMain, systemPreferences } from 'electron'
+import { app, BrowserWindow, ipcMain, systemPreferences } from 'electron'
 import { AppSettings } from '../shared/settings'
 import { getSettings, updateSettings } from './settingsStore'
 import { getDefaultTitle, getTitleOptions } from './core/titleGenerator'
@@ -76,6 +76,12 @@ export function registerIpcHandlers(): void {
     const next = updateSettings(patch)
     if ('launchAtLogin' in patch) {
       app.setLoginItemSettings({ openAtLogin: next.launchAtLogin })
+    }
+    if ('videoSource' in patch) {
+      // 屏幕直播时软件窗口（含迷你小窗）不出现在采集画面中
+      for (const w of BrowserWindow.getAllWindows()) {
+        w.setContentProtection(next.videoSource === 'screen')
+      }
     }
     return next
   })

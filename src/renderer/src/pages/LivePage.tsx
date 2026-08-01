@@ -78,8 +78,21 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   )
 
   const switchSource = async (next: VideoSourceKind): Promise<void> => {
-    if (!settings || next === settings.videoSource) return
+    if (!settings || next === settings.videoSource || busy !== null) return
     setSettings(await window.bethel.settings.update({ videoSource: next }))
+
+    // 直播/测试进行中：用新视频源重启推流（画面短暂停顿，直播不中断）
+    if (streamingActive && session) {
+      await run(next === 'screen' ? '正在切换到屏幕画面…' : '正在切换到摄像机画面…', async () => {
+        await window.bethel.stream.stop()
+        await window.bethel.stream.start({
+          rtmpUrl: session.rtmpUrl,
+          source: next,
+          videoLabel: '', // 按默认规则匹配：摄像机优先采集卡，屏幕取主屏
+          audioLabel: preview.audioStream?.getAudioTracks()[0]?.label ?? ''
+        })
+      })
+    }
   }
 
   const run = useCallback(async (label: string, fn: () => Promise<void>): Promise<void> => {
@@ -242,6 +255,22 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
             {phase === 'live' && liveStartAt && <LiveTimer since={liveStartAt} />}
           </div>
           <div className="mini-actions">
+            <button
+              className={`btn btn-mini ${source === 'camera' ? 'btn-mini-active' : ''}`}
+              onClick={() => switchSource('camera')}
+              disabled={busy !== null}
+              title="切换到摄像机"
+            >
+              📷
+            </button>
+            <button
+              className={`btn btn-mini ${source === 'screen' ? 'btn-mini-active' : ''}`}
+              onClick={() => switchSource('screen')}
+              disabled={busy !== null}
+              title="切换到本机屏幕（放 PPT）"
+            >
+              🖥
+            </button>
             {(phase === 'testing' || phase === 'live') && (
               <button className="btn btn-danger btn-mini" onClick={endLive} disabled={busy !== null}>
                 ⏹
@@ -273,14 +302,16 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
             <button
               className={`switch-btn ${source === 'camera' ? 'active' : ''}`}
               onClick={() => switchSource('camera')}
-              disabled={streamingActive}
+              disabled={busy !== null}
+              title="直播中也可切换，画面短暂停顿后恢复"
             >
               📷 摄像机
             </button>
             <button
               className={`switch-btn ${source === 'screen' ? 'active' : ''}`}
               onClick={() => switchSource('screen')}
-              disabled={streamingActive}
+              disabled={busy !== null}
+              title="放映 PPT 时切到此源，观众即可看到你的屏幕"
             >
               🖥 本机屏幕
             </button>

@@ -67,6 +67,12 @@ test('主流程：创建 → 推流测试 → 开播 → 分享 → 结束', asy
     await expect(page.locator('.status-badge')).toHaveText(/直播中/)
     await expect(page.locator('.live-timer')).toBeVisible()
 
+    // 直播中切换视频源（放 PPT 场景）：切到屏幕再切回，直播状态不受影响
+    await page.getByRole('button', { name: /本机屏幕/ }).click()
+    await expect(page.locator('.status-badge')).toHaveText(/直播中/, { timeout: 15_000 })
+    await page.getByRole('button', { name: /摄像机/ }).click()
+    await expect(page.locator('.status-badge')).toHaveText(/直播中/, { timeout: 15_000 })
+
     // Telegram 分享：先预览后发送
     await page.getByRole('button', { name: /分享到 Telegram/ }).click()
     const preview = page.locator('.modal-preview')

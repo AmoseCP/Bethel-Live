@@ -129,6 +129,9 @@ function createMainWindow(): void {
 
   mainWindow.once('ready-to-show', () => mainWindow?.show())
 
+  // 屏幕源时窗口对屏幕捕获隐身（迷你小窗不会被拍进 PPT 直播画面）
+  mainWindow.setContentProtection(getSettings().videoSource === 'screen')
+
   // 外部链接一律用系统浏览器打开
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
