@@ -57,7 +57,8 @@ const api = {
   settings: {
     get: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
     update: (patch: Partial<AppSettings>): Promise<AppSettings> =>
-      ipcRenderer.invoke('settings:update', patch)
+      ipcRenderer.invoke('settings:update', patch),
+    onChanged: (cb: (s: AppSettings) => void): (() => void) => subscribe('settings:changed', cb)
   },
   window: {
     setMini: (mini: boolean): Promise<void> => ipcRenderer.invoke('window:setMini', mini)

@@ -26,6 +26,12 @@ test('设置：修改并保存后跨重启保留', async () => {
     // 主题：点击色板立即生效
     await first.page.locator('.theme-swatch', { hasText: '浅粉' }).click()
     await expect(first.page.locator('html')).toHaveAttribute('data-theme', 'pink')
+
+    // 设置变更实时同步到常驻的直播页（无需重启）
+    await first.page.getByRole('button', { name: '直播' }).click()
+    await expect(
+      first.page.locator('.field', { hasText: '直播描述' }).locator('input')
+    ).toHaveValue('E2E 修改的描述')
   } finally {
     await first.app.close()
   }

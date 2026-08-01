@@ -25,7 +25,8 @@ export async function checkForUpdate(
 ): Promise<UpdateCheckResult> {
   try {
     const res = await fetchFn(RELEASES_API, {
-      headers: { Accept: 'application/vnd.github+json' }
+      headers: { Accept: 'application/vnd.github+json' },
+      signal: AbortSignal.timeout(10_000)
     })
     if (res.status === 404) {
       return {

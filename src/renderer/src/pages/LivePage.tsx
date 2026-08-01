@@ -38,6 +38,11 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   const [countdown, setCountdown] = useState('')
   const phaseRef = useRef<LivePhase>('idle')
   phaseRef.current = phase
+  const lastStartOpts = useRef<Parameters<typeof window.bethel.stream.start>[0] | null>(null)
+  const reconnecting = useRef(false)
+  const reconnectCount = useRef(0)
+  const lastReconnectAt = useRef(0)
+  const defaultDescRef = useRef('')
 
   useEffect(() => {
     window.bethel.settings.get().then(setSettings)
@@ -46,17 +51,56 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
       setTitleOptions(info.options)
       setTitle(info.defaultTitle)
       setDescription(info.defaultDescription)
+      defaultDescRef.current = info.defaultDescription
     })
     const offStats = window.bethel.stream.onStats(setStats)
-    const offExit = window.bethel.stream.onExit((info) => {
+    // 设置页改动实时同步（设备/屏幕偏好/默认描述等）
+    const offSettings = window.bethel.settings.onChanged((s) => {
+      setSettings(s)
+      if (phaseRef.current === 'idle') {
+        // 先捕获旧默认值：函数式更新是异步执行的，不能在比较前改掉 ref
+        const oldDefault = defaultDescRef.current
+        defaultDescRef.current = s.defaultDescription
+        setDescription((prev) => (prev === oldDefault ? s.defaultDescription : prev))
+      }
+    })
+    const offExit = window.bethel.stream.onExit(async (info) => {
       setStats(null)
-      if (!info.expected && phaseRef.current !== 'complete' && phaseRef.current !== 'idle') {
+      const ph = phaseRef.current
+      if (info.expected || ph === 'complete' || ph === 'idle') return
+
+      // 测试/直播中意外退出：自动重连（60 秒内最多 2 次，防止反复崩溃死循环）
+      if ((ph === 'testing' || ph === 'live') && lastStartOpts.current && !reconnecting.current) {
+        if (Date.now() - lastReconnectAt.current > 60_000) reconnectCount.current = 0
+        if (reconnectCount.current < 2) {
+          reconnecting.current = true
+          reconnectCount.current += 1
+          lastReconnectAt.current = Date.now()
+          setError('⚠ 推流意外中断，正在自动重连…')
+          try {
+            await window.bethel.stream.start(lastStartOpts.current)
+            setError(null)
+          } catch (e) {
+            setError(
+              `推流中断且自动重连失败：${e instanceof Error ? e.message : e}\n请检查设备与网络后点「结束直播」，再重新开播。`
+            )
+          } finally {
+            reconnecting.current = false
+          }
+          return
+        }
+        setError(`推流反复中断（码 ${info.code}），已停止自动重连。请点「结束直播」后排查设备。\n${info.logTail}`)
+        return
+      }
+
+      if (!reconnecting.current) {
         setError(`推流进程意外退出（码 ${info.code}）\n${info.logTail}`)
         setPhase('created')
       }
     })
     return () => {
       offStats()
+      offSettings()
       offExit()
     }
   }, [])
@@ -85,12 +129,14 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
     if (streamingActive && session) {
       await run(next === 'screen' ? '正在切换到屏幕画面…' : '正在切换到摄像机画面…', async () => {
         await window.bethel.stream.stop()
-        await window.bethel.stream.start({
+        const startOpts = {
           rtmpUrl: session.rtmpUrl,
           source: next,
-          videoLabel: '', // 按默认规则匹配：摄像机优先采集卡，屏幕取主屏
+          videoLabel: '', // 按默认规则匹配：摄像机优先采集卡，屏幕按设置选屏
           audioLabel: preview.audioStream?.getAudioTracks()[0]?.label ?? ''
-        })
+        }
+        await window.bethel.stream.start(startOpts)
+        lastStartOpts.current = startOpts
       })
     }
   }
@@ -122,12 +168,14 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   /** 启动推流 → 等 YouTube 收流 → 进入测试阶段（供手动与定时流程复用） */
   const doStartTest = useCallback(
     async (sess: LiveSession): Promise<void> => {
-      await window.bethel.stream.start({
+      const startOpts = {
         rtmpUrl: sess.rtmpUrl,
         source,
         videoLabel: preview.videoStream?.getVideoTracks()[0]?.label ?? '',
         audioLabel: preview.audioStream?.getAudioTracks()[0]?.label ?? ''
-      })
+      }
+      await window.bethel.stream.start(startOpts)
+      lastStartOpts.current = startOpts
       setPhase('pushing')
 
       let active = false
@@ -145,7 +193,13 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
         throw new Error('YouTube 未在 45 秒内收到推流信号，请检查网络与设备后重试')
       }
 
-      await window.bethel.youtube.transition(sess.broadcast.broadcastId, 'testing')
+      try {
+        await window.bethel.youtube.transition(sess.broadcast.broadcastId, 'testing')
+      } catch (e) {
+        await window.bethel.stream.stop()
+        setPhase('created')
+        throw e
+      }
       setPhase('testing')
     },
     [source, preview.videoStream, preview.audioStream]
@@ -441,6 +495,19 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
               {phase === 'created' && (
                 <button className="btn btn-primary" onClick={startTest} disabled={busy !== null}>
                   ▶ 开始推流测试
+                </button>
+              )}
+              {phase === 'pushing' && busy === null && (
+                <button
+                  className="btn btn-danger"
+                  onClick={() =>
+                    run('正在停止推流…', async () => {
+                      await window.bethel.stream.stop()
+                      setPhase('created')
+                    })
+                  }
+                >
+                  ⏹ 停止推流
                 </button>
               )}
               {phase === 'testing' && (
