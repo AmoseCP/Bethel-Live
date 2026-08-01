@@ -804,3 +804,10 @@ body {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+.update-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}

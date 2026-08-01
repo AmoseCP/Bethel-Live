@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AppSettings, VideoSourceKind } from '../shared/settings'
 import type { BroadcastLifeCycle, LiveSession, TitleInfo } from '../shared/youtube'
+import type { UpdateCheckResult } from '../shared/update'
 
 export interface StreamProgress {
   fps: number
@@ -23,6 +24,8 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
 // 渲染进程可用的 API 桥，随阶段逐步扩充
 const api = {
   getVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
+  checkUpdate: (): Promise<UpdateCheckResult> => ipcRenderer.invoke('app:checkUpdate'),
+  openUrl: (url: string): Promise<void> => ipcRenderer.invoke('app:openUrl', url),
   live: {
     titleInfo: (): Promise<TitleInfo> => ipcRenderer.invoke('live:titleInfo')
   },

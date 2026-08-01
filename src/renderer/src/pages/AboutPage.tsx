@@ -1,11 +1,47 @@
 import { useEffect, useState, type JSX } from 'react'
+import type { UpdateCheckResult } from '../../../shared/update'
 
 export default function AboutPage(): JSX.Element {
   const [version, setVersion] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [result, setResult] = useState<UpdateCheckResult | null>(null)
 
   useEffect(() => {
     window.bethel.getVersion().then(setVersion)
   }, [])
+
+  const checkUpdate = async (): Promise<void> => {
+    setChecking(true)
+    setResult(null)
+    try {
+      setResult(await window.bethel.checkUpdate())
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  const resultView = (): JSX.Element | null => {
+    if (!result) return null
+    switch (result.status) {
+      case 'update-available':
+        return (
+          <span className="update-row">
+            <span style={{ color: 'var(--warning)' }}>
+              发现新版本 v{result.latestVersion}（当前 v{result.currentVersion}）
+            </span>
+            <button className="btn btn-primary" onClick={() => window.bethel.openUrl(result.url!)}>
+              前往下载
+            </button>
+          </span>
+        )
+      case 'up-to-date':
+        return <span className="saved-tip">✓ 已是最新版本（v{result.currentVersion}）</span>
+      case 'no-release':
+        return <span style={{ color: 'var(--text-dim)' }}>{result.message}</span>
+      default:
+        return <span className="error-tip">检查失败：{result.message}</span>
+    }
+  }
 
   return (
     <div className="page">
@@ -17,6 +53,12 @@ export default function AboutPage(): JSX.Element {
         <p className="about-row">
           <span className="about-label">作者</span> Telegram @Dingjin2025
         </p>
+        <div className="actions-row" style={{ margin: '14px 0 4px' }}>
+          <button className="btn" onClick={checkUpdate} disabled={checking}>
+            {checking ? '检查中…' : '检查更新'}
+          </button>
+          {resultView()}
+        </div>
         <div className="about-disclaimer">
           <h3>免责声明</h3>
           <p>

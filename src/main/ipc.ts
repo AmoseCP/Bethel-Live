@@ -6,6 +6,8 @@ import { getDefaultTitle, getTitleOptions } from './core/titleGenerator'
 import * as yt from './youtubeService'
 import * as ff from './ffmpegService'
 import { sendTelegramMessage } from './core/telegram'
+import { checkForUpdate } from './core/updateCheck'
+import { shell } from 'electron'
 
 /** E2E 模式：YouTube/Telegram/FFmpeg 走内置假实现，覆盖完整用户流程而不触网 */
 const MOCK_API = process.env.BETHEL_MOCK_API === '1'
@@ -28,6 +30,10 @@ function mockSession(title: string): unknown {
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('app:version', () => app.getVersion())
+  ipcMain.handle('app:checkUpdate', () => checkForUpdate(app.getVersion()))
+  ipcMain.handle('app:openUrl', (_e, url: string) => {
+    if (/^https:\/\//.test(url)) shell.openExternal(url)
+  })
 
   // ---- 直播标题 ----
   ipcMain.handle('live:titleInfo', () => {
