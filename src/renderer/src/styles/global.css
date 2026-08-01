@@ -643,3 +643,39 @@ body {
   color: var(--warning);
   font-weight: 600;
 }
+
+/* ---------- 品牌与细节打磨 ---------- */
+.logo-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+  border: 2px solid var(--bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+
+::selection {
+  background: rgba(79, 140, 255, 0.35);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.nav-item,
+.btn,
+.switch-btn,
+.chip {
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}

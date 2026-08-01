@@ -50,7 +50,8 @@ pnpm build:win      # 打包 Windows NSIS 安装包（在 Windows 上执行）
 
 Logo 占位文件位置（拿到正式 Logo 后同名替换即可）：
 
-- `resources/logo.svg` — 应用内界面 Logo
+- `src/renderer/src/assets/logo.svg` — 应用内界面 Logo
+- `resources/tray-icon.png` — 系统托盘图标（22×22 PNG）
 - `build/icon.png` — 打包图标源文件（1024×1024 PNG，electron-builder 自动生成各平台图标）
 
 替换后重新执行打包命令即可生效。
