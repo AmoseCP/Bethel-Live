@@ -24,6 +24,13 @@ export default function AboutPage(): JSX.Element {
     if (!result) return null
     switch (result.status) {
       case 'update-available':
+        if (result.autoInstall) {
+          return (
+            <span className="update-row" style={{ color: 'var(--warning)' }}>
+              发现新版本 v{result.latestVersion}，正在后台自动下载——完成后窗口顶部会提示「立即重启更新」
+            </span>
+          )
+        }
         return (
           <span className="update-row">
             <span style={{ color: 'var(--warning)' }}>

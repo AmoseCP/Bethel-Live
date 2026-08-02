@@ -6,4 +6,6 @@ export interface UpdateCheckResult {
   /** 下载页面地址（有新版时） */
   url?: string
   message?: string
+  /** true = 正在后台自动下载，无需手动下载（Windows） */
+  autoInstall?: boolean
 }
