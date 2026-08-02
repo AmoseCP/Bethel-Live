@@ -25,6 +25,8 @@ export interface AppSettings {
   closeAction: 'ask' | 'quit' | 'tray'
   /** 界面主题 */
   theme: ThemeKind
+  /** 直播画质档位 */
+  quality: 'high' | 'medium' | 'low'
 }
 
 /** 磁盘上必须加密存储的字段（safeStorage） */
@@ -42,5 +44,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   screenPreference: 'auto',
   launchAtLogin: false,
   closeAction: 'ask',
-  theme: DEFAULT_THEME
+  theme: DEFAULT_THEME,
+  quality: 'high'
 }

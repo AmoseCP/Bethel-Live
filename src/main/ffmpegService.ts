@@ -14,7 +14,7 @@ import {
   pickScreenDevice
 } from './core/ffmpegParse'
 import { getSettings } from './settingsStore'
-import { buildStreamArgs, CaptureTarget, DEFAULT_ENCODE } from './core/ffmpegArgs'
+import { buildStreamArgs, CaptureTarget, QUALITY_PRESETS } from './core/ffmpegArgs'
 import type { VideoSourceKind } from '../shared/settings'
 
 /** 打包后优先用随应用分发的 ffmpeg（resources/bin），否则用系统 PATH 中的 */
@@ -119,7 +119,7 @@ async function startStreamInner(opts: StreamStartOptions): Promise<void> {
   target.audioIndex = audio.index
   target.audioName = audio.name
 
-  const args = buildStreamArgs(target, opts.rtmpUrl, DEFAULT_ENCODE)
+  const args = buildStreamArgs(target, opts.rtmpUrl, QUALITY_PRESETS[getSettings().quality])
   const child = spawn(ffmpegPath(), args, { stdio: ['pipe', 'ignore', 'pipe'] })
   current = child
 

@@ -32,6 +32,8 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [monitorOn, setMonitorOn] = useState(false)
+  const [streamDown, setStreamDown] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [scheduleTime, setScheduleTime] = useState('')
   const [scheduledAt, setScheduledAt] = useState<number | null>(null)
@@ -82,27 +84,31 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
       const ph = phaseRef.current
       if (info.expected || ph === 'complete' || ph === 'idle') return
 
-      // 测试/直播中意外退出：自动重连（60 秒内最多 2 次，防止反复崩溃死循环）
+      // 测试/直播中意外退出：自动重连（5 分钟窗口内最多 5 次，间隔递增，防死循环）
       if ((ph === 'testing' || ph === 'live') && lastStartOpts.current && !reconnecting.current) {
-        if (Date.now() - lastReconnectAt.current > 60_000) reconnectCount.current = 0
-        if (reconnectCount.current < 2) {
+        if (Date.now() - lastReconnectAt.current > 300_000) reconnectCount.current = 0
+        if (reconnectCount.current < 5) {
           reconnecting.current = true
           reconnectCount.current += 1
           lastReconnectAt.current = Date.now()
-          setError('⚠ 推流意外中断，正在自动重连…')
+          setError(`⚠ 推流意外中断，正在自动重连（第 ${reconnectCount.current} 次）…`)
           try {
+            await new Promise((r) => setTimeout(r, Math.min(reconnectCount.current * 2000, 8000)))
             await window.bethel.stream.start(lastStartOpts.current)
             setError(null)
+            setStreamDown(false)
           } catch (e) {
+            setStreamDown(true)
             setError(
-              `推流中断且自动重连失败：${e instanceof Error ? e.message : e}\n请检查设备与网络后点「结束直播」，再重新开播。`
+              `推流中断且自动重连失败：${e instanceof Error ? e.message : e}\n请排查设备/网络后点「重新推流」——观众链接不变，无需重新创建直播。`
             )
           } finally {
             reconnecting.current = false
           }
           return
         }
-        setError(`推流反复中断（码 ${info.code}），已停止自动重连。请点「结束直播」后排查设备。\n${info.logTail}`)
+        setStreamDown(true)
+        setError(`推流反复中断（码 ${info.code}），已暂停自动重连。请排查后点「重新推流」（链接不变）。\n${info.logTail}`)
         return
       }
 
@@ -141,16 +147,24 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
 
     // 直播/测试进行中：用新视频源重启推流（画面短暂停顿，直播不中断）
     if (streamingActive && session) {
+      const prevSource = settings.videoSource
       await run(next === 'screen' ? '正在切换到屏幕画面…' : '正在切换到摄像机画面…', async () => {
         await window.bethel.stream.stop()
-        const startOpts = {
-          rtmpUrl: session.rtmpUrl,
-          source: next,
-          videoLabel: '', // 按默认规则匹配：摄像机优先采集卡，屏幕按设置选屏
-          audioLabel: preview.audioStream?.getAudioTracks()[0]?.label ?? ''
+        const audioLabel = preview.audioStream?.getAudioTracks()[0]?.label ?? ''
+        const startOpts = { rtmpUrl: session.rtmpUrl, source: next, videoLabel: '', audioLabel }
+        try {
+          await window.bethel.stream.start(startOpts)
+          lastStartOpts.current = startOpts
+        } catch (e) {
+          // 新源打不开：自动切回旧源恢复推流，观众端不长时间黑屏
+          const fallback = { ...startOpts, source: prevSource }
+          setSettings(await window.bethel.settings.update({ videoSource: prevSource }))
+          await window.bethel.stream.start(fallback).catch(() => setStreamDown(true))
+          lastStartOpts.current = fallback
+          throw new Error(
+            `切换${next === 'screen' ? '屏幕' : '摄像机'}失败，已自动切回原画面继续直播：${e instanceof Error ? e.message : e}`
+          )
         }
-        await window.bethel.stream.start(startOpts)
-        lastStartOpts.current = startOpts
       })
     }
   }
@@ -256,21 +270,58 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
       setLiveStartAt(null)
     })
 
-  /** 定时到点：创建 → 推流测试 → 直接开播 */
+  /** 定时到点：创建 → 推流测试 → 自检 → 开播 */
   const autoStart = useCallback((): Promise<void> => {
     if (phaseRef.current !== 'idle') return Promise.resolve() // 已手动开播则忽略定时触发
     return run('定时开播：正在自动创建并开始直播…', async () => {
-      const sess = await window.bethel.youtube.createLive(title, description)
+      // 标题若未手动修改，按触发时刻重新生成（防止上午武装、晚上开播用错场次）
+      let useTitle = title
+      if (title === defaultTitleRef.current) {
+        const info = await window.bethel.live.titleInfo()
+        useTitle = info.defaultTitle
+        defaultTitleRef.current = info.defaultTitle
+        setTitle(info.defaultTitle)
+      }
+      const sess = await window.bethel.youtube.createLive(useTitle, description)
       setSession(sess)
       setPhase('created')
       await doStartTest(sess)
+      // 无人值守自检：无画面或无音频设备时停在测试阶段，不把黑屏推给观众
+      const videoOk = preview.videoStream?.getVideoTracks().some((t) => t.readyState === 'live')
+      const audioOk = (preview.audioStream?.getAudioTracks().length ?? 0) > 0
+      if (!videoOk || !audioOk) {
+        setError(
+          `定时开播自检未通过（${videoOk ? '' : '无视频画面 '}${audioOk ? '' : '无音频设备'}）。已停在测试阶段（观众不可见），请人工确认后点「正式开播」。`
+        )
+        return
+      }
       await window.bethel.youtube.transition(sess.broadcast.broadcastId, 'live')
       setPhase('live')
       setLiveStartAt(Date.now())
     })
-  }, [run, doStartTest, title, description])
+  }, [run, doStartTest, title, description, preview.videoStream, preview.audioStream])
   const autoStartRef = useRef(autoStart)
   autoStartRef.current = autoStart
+
+  // 直播/测试中定期核对 YouTube 端广播状态（断流过久会被自动 complete）
+  useEffect(() => {
+    if (!session || (phase !== 'live' && phase !== 'testing')) return
+    const t = setInterval(async () => {
+      try {
+        const st = await window.bethel.youtube.broadcastStatus(session.broadcast.broadcastId)
+        if (st === 'complete' && (phaseRef.current === 'live' || phaseRef.current === 'testing')) {
+          await window.bethel.stream.stop().catch(() => {})
+          setPhase('complete')
+          setLiveStartAt(null)
+          setStreamDown(false)
+          setError('本场直播已被 YouTube 结束（推流中断过久）。请点「创建新直播」并重新分享链接。')
+        }
+      } catch {
+        /* 网络抖动时静默，下轮再查 */
+      }
+    }, 30_000)
+    return () => clearInterval(t)
+  }, [session, phase])
 
   // 定时触发与倒计时
   useEffect(() => {
@@ -334,6 +385,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
             <StatusBadge phase={phase} />
             {phase === 'live' && liveStartAt && <LiveTimer since={liveStartAt} />}
           </div>
+          {error && <div className="mini-error" title={error}>⚠ {error.split('\n')[0]}</div>}
           <div className="mini-actions">
             <button
               className={`btn btn-mini ${source === 'camera' ? 'btn-mini-active' : ''}`}
@@ -416,8 +468,29 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
       </div>
 
       <div className="panel meter-panel">
-        <h3 className="panel-title">音频电平</h3>
+        <div className="meter-head">
+          <h3 className="panel-title">音频电平</h3>
+          <button
+            className={`btn btn-mini ${monitorOn ? 'btn-mini-active' : ''}`}
+            onClick={() => setMonitorOn(!monitorOn)}
+            disabled={!preview.audioStream}
+            title="在本机播放采集到的声音，用于开播前确认音质"
+          >
+            🎧 {monitorOn ? '停止试听' : '试听'}
+          </button>
+        </div>
         <AudioMeter stream={preview.audioStream} />
+        {monitorOn && (
+          <>
+            <audio
+              autoPlay
+              ref={(el) => {
+                if (el && el.srcObject !== preview.audioStream) el.srcObject = preview.audioStream
+              }}
+            />
+            <p className="meter-warn">🎧 试听中：请佩戴耳机——外放扬声器会与麦克风形成啸叫</p>
+          </>
+        )}
         {preview.audioError && <p className="meter-warn">⚠ 无法打开音频设备：{preview.audioError}</p>}
       </div>
 
@@ -539,6 +612,22 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
               {phase === 'testing' && (
                 <button className="btn btn-live" onClick={goLive} disabled={busy !== null}>
                   🔴 正式开播
+                </button>
+              )}
+              {(phase === 'testing' || phase === 'live') && streamDown && (
+                <button
+                  className="btn btn-primary"
+                  disabled={busy !== null}
+                  onClick={() =>
+                    run('正在重新推流…', async () => {
+                      if (lastStartOpts.current) {
+                        await window.bethel.stream.start(lastStartOpts.current)
+                        setStreamDown(false)
+                      }
+                    })
+                  }
+                >
+                  🔄 重新推流（链接不变）
                 </button>
               )}
               {(phase === 'testing' || phase === 'live') && (

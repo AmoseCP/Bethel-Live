@@ -1,5 +1,7 @@
 # Bethel Live
 
+[![CI](https://github.com/AmoseCP/Bethel-Live/actions/workflows/ci.yml/badge.svg)](https://github.com/AmoseCP/Bethel-Live/actions/workflows/ci.yml)
+
 教会场景的桌面端 YouTube 直播推流工具。一键创建并开始 YouTube 直播，支持直播预览、测试、定时开播、Telegram 分享。
 
 支持平台：**Windows 10/11**、**macOS**。
@@ -31,7 +33,7 @@ pnpm typecheck      # TypeScript 类型检查
 ## 测试
 
 ```bash
-pnpm test           # 全部单元测试（Vitest，68 项）
+pnpm test           # 全部单元测试（Vitest）
 pnpm test:watch     # 单元测试 watch 模式
 pnpm build && pnpm test:e2e   # 端到端测试（Playwright 驱动真实 Electron，先 build）
 ```

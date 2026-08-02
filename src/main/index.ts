@@ -31,6 +31,12 @@ if (FAKE_MEDIA) {
   app.commandLine.appendSwitch('use-fake-ui-for-media-stream')
 }
 
+// 单实例：托盘常驻时再次双击图标应唤醒已有窗口，而不是开第二个实例抢占设备
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+}
+app.on('second-instance', () => showMainWindow())
+
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let isQuitting = false
@@ -57,6 +63,18 @@ async function handleCloseRequest(win: BrowserWindow): Promise<void> {
   const { closeAction } = getSettings()
 
   if (closeAction === 'quit') {
+    // 记住了"退出"也不允许静默杀掉正在进行的直播
+    if (isStreaming()) {
+      const { response } = await dialog.showMessageBox(win, {
+        type: 'warning',
+        title: '正在直播',
+        message: '直播推流正在进行中，确定退出并停止直播吗？',
+        buttons: ['取消', '退出并停止直播'],
+        defaultId: 0,
+        cancelId: 0
+      })
+      if (response !== 1) return
+    }
     void quitApp()
     return
   }
@@ -118,6 +136,7 @@ function createMainWindow(): void {
     minHeight: NORMAL_MIN.height,
     show: false,
     title: 'Bethel Live',
+    autoHideMenuBar: true,
     backgroundColor: '#0d1117',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

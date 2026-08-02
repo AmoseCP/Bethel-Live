@@ -3,7 +3,7 @@ import {
   PREFERRED_AUDIO_PATTERN,
   PREFERRED_VIDEO_PATTERN,
   pickDevice
-} from '../../src/main/core/devices'
+} from '../../src/shared/devices'
 
 const cams = [
   { deviceId: 'builtin', label: 'FaceTime HD Camera' },

@@ -19,6 +19,15 @@ export const DEFAULT_ENCODE: StreamEncodeOptions = {
   audioBitrateKbps: 128
 }
 
+export type QualityPreset = 'high' | 'medium' | 'low'
+
+/** 三档画质：按场地上行带宽选择（约需码率的 1.3 倍稳定上行） */
+export const QUALITY_PRESETS: Record<QualityPreset, StreamEncodeOptions> = {
+  high: DEFAULT_ENCODE,
+  medium: { width: 1280, height: 720, fps: 30, videoBitrateKbps: 2500, audioBitrateKbps: 128 },
+  low: { width: 854, height: 480, fps: 30, videoBitrateKbps: 1200, audioBitrateKbps: 96 }
+}
+
 export interface CaptureTarget {
   platform: 'darwin' | 'win32'
   source: 'camera' | 'screen'

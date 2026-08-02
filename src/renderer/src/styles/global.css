@@ -831,3 +831,27 @@ body {
   padding: 6px 14px;
   font-size: 12.5px;
 }
+
+.meter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.meter-head .panel-title {
+  margin-bottom: 0;
+}
+
+.mini-error {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(248, 81, 73, 0.85);
+  color: #fff;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

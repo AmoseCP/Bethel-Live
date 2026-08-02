@@ -1,5 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import type { VideoSourceKind } from '../../../shared/settings'
+import {
+  pickDevice,
+  PREFERRED_AUDIO_PATTERN,
+  PREFERRED_VIDEO_PATTERN
+} from '../../../shared/devices'
+
+/** 自动模式（savedId 为空）时按首选型号匹配设备：GC311G2 采集卡 / Focusrite 声卡 */
+async function resolveDeviceId(
+  kind: 'videoinput' | 'audioinput',
+  savedId: string,
+  preferred: RegExp
+): Promise<string> {
+  const all = await navigator.mediaDevices.enumerateDevices()
+  const devices = all
+    .filter((d) => d.kind === kind && d.deviceId && d.deviceId !== 'default')
+    .map((d) => ({ deviceId: d.deviceId, label: d.label }))
+  return pickDevice(devices, savedId, preferred)?.deviceId ?? ''
+}
 
 export interface PreviewState {
   /** 预览视频流（含摄像头或屏幕视频轨） */
@@ -51,8 +69,9 @@ export function useMediaPreview(
           video = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
         } else {
           await window.bethel.media.requestAccess('camera')
+          const vid = await resolveDeviceId('videoinput', videoDeviceId, PREFERRED_VIDEO_PATTERN)
           video = await navigator.mediaDevices.getUserMedia({
-            video: videoDeviceId ? { deviceId: { exact: videoDeviceId } } : true,
+            video: vid ? { deviceId: { exact: vid } } : true,
             audio: false
           })
         }
@@ -68,9 +87,16 @@ export function useMediaPreview(
       let audioError: string | null = null
       try {
         await window.bethel.media.requestAccess('microphone')
+        const aid = await resolveDeviceId('audioinput', audioDeviceId, PREFERRED_AUDIO_PATTERN)
+        // 关闭回声消除/自动增益/降噪：电平表与试听必须反映 ffmpeg 实际推流的原始信号
+        const rawAudio = {
+          echoCancellation: false,
+          autoGainControl: false,
+          noiseSuppression: false
+        }
         audio = await navigator.mediaDevices.getUserMedia({
           video: false,
-          audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true
+          audio: aid ? { deviceId: { exact: aid }, ...rawAudio } : rawAudio
         })
       } catch (e) {
         audioError = e instanceof Error ? e.message : String(e)

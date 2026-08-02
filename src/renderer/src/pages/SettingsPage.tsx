@@ -134,6 +134,17 @@ export default function SettingsPage(): JSX.Element {
             onChange={(e) => set('defaultDescription', e.target.value)}
           />
         </label>
+        <label className="field">
+          <span>直播画质（按场地网络上行带宽选择）</span>
+          <select
+            value={settings.quality}
+            onChange={(e) => set('quality', e.target.value as AppSettings['quality'])}
+          >
+            <option value="high">高清 720p · 4.5Mbps（需稳定上行 ≥ 6Mbps）</option>
+            <option value="medium">标准 720p · 2.5Mbps（需稳定上行 ≥ 3.5Mbps）</option>
+            <option value="low">流畅 480p · 1.2Mbps（需稳定上行 ≥ 2Mbps）</option>
+          </select>
+        </label>
       </section>
 
       <section className="panel">

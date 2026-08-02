@@ -100,3 +100,22 @@ describe('编码参数', () => {
     expect(s).toContain('scale=1280:720:force_original_aspect_ratio=decrease')
   })
 })
+
+describe('画质预设', () => {
+  it('三档码率递减且分辨率合法', async () => {
+    const { QUALITY_PRESETS } = await import('../../src/main/core/ffmpegArgs')
+    expect(QUALITY_PRESETS.high.videoBitrateKbps).toBeGreaterThan(QUALITY_PRESETS.medium.videoBitrateKbps)
+    expect(QUALITY_PRESETS.medium.videoBitrateKbps).toBeGreaterThan(QUALITY_PRESETS.low.videoBitrateKbps)
+    expect(QUALITY_PRESETS.low.width).toBe(854)
+  })
+
+  it('中档预设生成 2500k 码率参数', async () => {
+    const { QUALITY_PRESETS, buildStreamArgs } = await import('../../src/main/core/ffmpegArgs')
+    const args = buildStreamArgs(
+      { platform: 'darwin', source: 'camera', videoIndex: 0, audioIndex: 0 },
+      'rtmp://a.rtmp.youtube.com/live2/k',
+      QUALITY_PRESETS.medium
+    )
+    expect(args.join(' ')).toContain('-b:v 2500k')
+  })
+})
