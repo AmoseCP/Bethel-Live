@@ -869,3 +869,109 @@ body {
   word-break: break-all;
   user-select: text;
 }
+
+/* ---------- 小屏适配与紧凑化 ---------- */
+.sidebar {
+  width: 148px;
+  padding: 14px 8px;
+  gap: 16px;
+}
+
+.sidebar-brand {
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.logo-img {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+}
+
+.brand-name {
+  font-size: 13px;
+}
+
+.nav-item {
+  padding: 8px 10px;
+}
+
+.page {
+  padding: 16px 22px;
+}
+
+.page-title {
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+
+.live-header {
+  margin-bottom: 10px;
+}
+
+.panel {
+  padding: 12px 16px;
+  margin-bottom: 10px;
+}
+
+.panel-title {
+  margin-bottom: 10px;
+}
+
+.field {
+  margin-bottom: 9px;
+}
+
+.field input,
+.field select {
+  padding: 7px 10px;
+}
+
+.btn {
+  padding: 8px 18px;
+}
+
+/* 预览高度封顶：小屏上控制区始终可见（画面居中留黑边） */
+.preview-box {
+  max-height: 46vh;
+  margin-bottom: 10px;
+}
+
+/* 窄窗口：侧栏收成图标栏 */
+@media (max-width: 1020px) {
+  .sidebar {
+    width: 56px;
+    padding: 12px 6px;
+    align-items: center;
+  }
+
+  .brand-name,
+  .nav-label {
+    display: none;
+  }
+
+  .sidebar-brand {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 10px 0;
+  }
+}
+
+/* 矮窗口：进一步压缩垂直留白 */
+@media (max-height: 700px) {
+  .page {
+    padding: 10px 18px;
+  }
+
+  .preview-box {
+    max-height: 38vh;
+  }
+
+  .panel {
+    padding: 10px 14px;
+  }
+}

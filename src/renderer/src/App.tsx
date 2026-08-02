@@ -68,7 +68,7 @@ export default function App(): JSX.Element {
                 onClick={() => setPage(item.key)}
               >
                 <span className="nav-icon">{item.icon}</span>
-                {item.label}
+                <span className="nav-label">{item.label}</span>
               </button>
             ))}
           </nav>

@@ -43,7 +43,8 @@ let isQuitting = false
 let normalBounds: Electron.Rectangle | null = null
 
 const MINI_SIZE = { width: 360, height: 280 }
-const NORMAL_MIN = { width: 960, height: 640 }
+const NORMAL_MIN = { width: 800, height: 560 }
+let defaultSize = { width: 1280, height: 820 }
 
 function resourcePath(name: string): string {
   return app.isPackaged
@@ -129,9 +130,15 @@ function showMainWindow(): void {
 }
 
 function createMainWindow(): void {
+  // 按屏幕工作区收缩初始尺寸（13 寸笔记本等小屏不溢出）
+  const wa = screen.getPrimaryDisplay().workAreaSize
+  defaultSize = {
+    width: Math.min(1280, wa.width - 24),
+    height: Math.min(820, wa.height - 24)
+  }
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 820,
+    width: defaultSize.width,
+    height: defaultSize.height,
     minWidth: NORMAL_MIN.width,
     minHeight: NORMAL_MIN.height,
     show: false,
@@ -189,7 +196,7 @@ function setMiniMode(mini: boolean): void {
     win.setAlwaysOnTop(false)
     win.setMinimumSize(NORMAL_MIN.width, NORMAL_MIN.height)
     if (normalBounds) win.setBounds(normalBounds)
-    else win.setSize(1280, 820)
+    else win.setSize(defaultSize.width, defaultSize.height)
   }
 }
 
