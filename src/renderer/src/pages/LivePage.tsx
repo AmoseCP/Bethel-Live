@@ -75,7 +75,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
     const offStats = window.bethel.stream.onStats(setStats)
     // FFmpeg 回传的推流画面帧（Windows 摄像头独占时的软件内预览）
     const offFrame = window.bethel.stream.onPreviewFrame((jpeg) => {
-      const url = URL.createObjectURL(new Blob([jpeg.buffer as ArrayBuffer], { type: 'image/jpeg' }))
+      const url = URL.createObjectURL(new Blob([jpeg as BlobPart], { type: 'image/jpeg' }))
       if (ffPreviewUrlRef.current) URL.revokeObjectURL(ffPreviewUrlRef.current)
       ffPreviewUrlRef.current = url
       setFfPreviewUrl(url)
@@ -92,6 +92,10 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
     })
     const offExit = window.bethel.stream.onExit(async (info) => {
       setStats(null)
+      if (ffPreviewUrlRef.current) {
+        URL.revokeObjectURL(ffPreviewUrlRef.current)
+        ffPreviewUrlRef.current = null
+      }
       setFfPreviewUrl(null)
       const ph = phaseRef.current
       if (info.expected || ph === 'complete' || ph === 'idle') return

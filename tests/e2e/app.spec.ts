@@ -68,6 +68,13 @@ test('主流程：创建 → 推流测试 → 开播 → 分享 → 结束', asy
     await page.getByRole('button', { name: /开始推流测试/ }).click()
     await expect(page.locator('.status-badge')).toHaveText(/测试中/, { timeout: 15_000 })
 
+    // 推流中主界面必须能看到画面（Windows=FFmpeg 回传 img，macOS=预览 video）
+    if (process.platform === 'win32') {
+      await expect(page.locator('img.preview-video')).toBeVisible({ timeout: 10_000 })
+    } else {
+      await expect(page.locator('video.preview-video')).toBeVisible()
+    }
+
     // 正式开播
     await page.getByRole('button', { name: /正式开播/ }).click()
     await expect(page.locator('.status-badge')).toHaveText(/直播中/)

@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "build:mac": "electron-vite build && electron-builder --mac --publish never",
-    "build:win": "electron-vite build && electron-builder --win --publish never"
+    "build:win": "electron-vite build && electron-builder --win --publish never",
+    "smoke:package": "node tests/package-smoke.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

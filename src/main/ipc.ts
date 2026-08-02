@@ -13,6 +13,12 @@ import { shell } from 'electron'
 /** E2E 模式：YouTube/Telegram/FFmpeg 走内置假实现，覆盖完整用户流程而不触网 */
 const MOCK_API = process.env.BETHEL_MOCK_API === '1'
 let mockStreaming = false
+let mockFrameTimer: NodeJS.Timeout | null = null
+// 1x1 像素的最小合法 JPEG（模拟推流回传画面帧）
+const MOCK_JPEG = Buffer.from(
+  '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==',
+  'base64'
+)
 
 function mockSession(title: string): unknown {
   return {
@@ -83,6 +89,14 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('stream:start', (_e, opts: ff.StreamStartOptions) => {
     if (MOCK_API) {
       mockStreaming = true
+      // 模拟 FFmpeg 画面回传（覆盖"推流中预览显示"这条 UI 路径）
+      if (!mockFrameTimer) {
+        mockFrameTimer = setInterval(() => {
+          for (const w of BrowserWindow.getAllWindows()) {
+            w.webContents.send('stream:previewFrame', MOCK_JPEG)
+          }
+        }, 200)
+      }
       return
     }
     return ff.startStream(opts)
@@ -90,6 +104,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('stream:stop', () => {
     if (MOCK_API) {
       mockStreaming = false
+      if (mockFrameTimer) {
+        clearInterval(mockFrameTimer)
+        mockFrameTimer = null
+      }
       return
     }
     return ff.stopStream()

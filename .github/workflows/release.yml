@@ -84,6 +84,9 @@ jobs:
       - name: 打包安装包
         run: pnpm ${{ matrix.script }}
 
+      - name: 打包产物验证（更新器在包内/FFmpeg内置/真实启动）
+        run: pnpm smoke:package
+
       - uses: actions/upload-artifact@v4
         with:
           name: installer-${{ matrix.os }}
