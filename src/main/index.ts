@@ -216,22 +216,50 @@ app.whenReady().then(() => {
   createTray()
   createMainWindow()
 
-  // 自动检查更新：启动 8 秒后一次，此后每 4 小时（测试环境跳过）
+  // 自动更新：Windows 打包版后台静默下载、一键重启安装；macOS（未签名不允许自更新）走提醒+下载
   if (process.env.BETHEL_MOCK_API !== '1' && process.env.BETHEL_FAKE_MEDIA !== '1') {
-    const notifyUpdate = async (): Promise<void> => {
-      const r = await checkForUpdate(app.getVersion())
-      if (r.status === 'update-available') {
-        for (const w of BrowserWindow.getAllWindows()) {
-          w.webContents.send('update:available', r)
-        }
-      }
-    }
-    setTimeout(() => void notifyUpdate(), 8_000)
-    setInterval(() => void notifyUpdate(), 4 * 3600_000)
+    void setupUpdates()
   }
 
   app.on('activate', () => showMainWindow())
 })
+
+async function setupUpdates(): Promise<void> {
+  const broadcast = (channel: string, payload: unknown): void => {
+    for (const w of BrowserWindow.getAllWindows()) w.webContents.send(channel, payload)
+  }
+
+  if (process.platform === 'win32' && app.isPackaged) {
+    const { autoUpdater } = await import('electron-updater')
+    autoUpdater.autoDownload = true
+    autoUpdater.autoInstallOnAppQuit = true
+    autoUpdater.on('update-downloaded', (info) => {
+      broadcast('update:downloaded', { version: info.version })
+    })
+    ipcMain.handle('update:install', () => {
+      if (isStreaming()) throw new Error('直播推流进行中，请结束直播后再重启更新')
+      isQuitting = true
+      autoUpdater.quitAndInstall(true, true)
+    })
+    const check = (): void => {
+      autoUpdater.checkForUpdates().catch(() => {})
+    }
+    setTimeout(check, 8_000)
+    setInterval(check, 4 * 3600_000)
+    return
+  }
+
+  // macOS / 开发模式：检查 + 提醒下载
+  ipcMain.handle('update:install', () => {
+    throw new Error('当前平台不支持应用内自动安装，请从下载页获取新版本')
+  })
+  const notifyUpdate = async (): Promise<void> => {
+    const r = await checkForUpdate(app.getVersion())
+    if (r.status === 'update-available') broadcast('update:available', r)
+  }
+  setTimeout(() => void notifyUpdate(), 8_000)
+  setInterval(() => void notifyUpdate(), 4 * 3600_000)
+}
 
 app.on('before-quit', (e) => {
   if (isQuitting) return

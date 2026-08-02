@@ -27,6 +27,9 @@ const api = {
   checkUpdate: (): Promise<UpdateCheckResult> => ipcRenderer.invoke('app:checkUpdate'),
   onUpdateAvailable: (cb: (r: UpdateCheckResult) => void): (() => void) =>
     subscribe('update:available', cb),
+  onUpdateDownloaded: (cb: (info: { version: string }) => void): (() => void) =>
+    subscribe('update:downloaded', cb),
+  installUpdate: (): Promise<void> => ipcRenderer.invoke('update:install'),
   openUrl: (url: string): Promise<void> => ipcRenderer.invoke('app:openUrl', url),
   live: {
     titleInfo: (): Promise<TitleInfo> => ipcRenderer.invoke('live:titleInfo')

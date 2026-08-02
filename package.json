@@ -14,12 +14,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "build:mac": "electron-vite build && electron-builder --mac",
-    "build:win": "electron-vite build && electron-builder --win"
+    "build:mac": "electron-vite build && electron-builder --mac --publish never",
+    "build:win": "electron-vite build && electron-builder --win --publish never"
   },
   "dependencies": {
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
@@ -32,6 +31,8 @@
     "electron-vite": "^5.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   }
 }

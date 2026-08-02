@@ -1,5 +1,9 @@
 import { useEffect, useState, type JSX } from 'react'
 import type { UpdateCheckResult } from '../../shared/update'
+
+type UpdateNotice =
+  | { kind: 'available'; version: string; url: string }
+  | { kind: 'downloaded'; version: string }
 import { applyTheme } from './applyTheme'
 import logoUrl from './assets/logo.png'
 import LivePage from './pages/LivePage'
@@ -17,12 +21,30 @@ const NAV: { key: Page; label: string; icon: string }[] = [
 export default function App(): JSX.Element {
   const [page, setPage] = useState<Page>('live')
   const [mini, setMini] = useState(false)
-  const [update, setUpdate] = useState<UpdateCheckResult | null>(null)
+  const [update, setUpdate] = useState<UpdateNotice | null>(null)
+  const [installErr, setInstallErr] = useState<string | null>(null)
 
   useEffect(() => {
     window.bethel.settings.get().then((s) => applyTheme(s.theme))
-    return window.bethel.onUpdateAvailable(setUpdate)
+    const offAvail = window.bethel.onUpdateAvailable((r: UpdateCheckResult) =>
+      setUpdate({ kind: 'available', version: r.latestVersion ?? '', url: r.url ?? '' })
+    )
+    const offDl = window.bethel.onUpdateDownloaded((info) =>
+      setUpdate({ kind: 'downloaded', version: info.version })
+    )
+    return () => {
+      offAvail()
+      offDl()
+    }
   }, [])
+
+  const installNow = async (): Promise<void> => {
+    try {
+      await window.bethel.installUpdate()
+    } catch (e) {
+      setInstallErr(e instanceof Error ? e.message : String(e))
+    }
+  }
 
   const toggleMini = async (next: boolean): Promise<void> => {
     await window.bethel.window.setMini(next)
@@ -55,15 +77,27 @@ export default function App(): JSX.Element {
       <main className="content">
         {update && !mini && (
           <div className="update-banner">
-            <span>
-              🎉 新版本 v{update.latestVersion} 已发布（当前 v{update.currentVersion}）
-            </span>
-            <button
-              className="btn btn-primary btn-banner"
-              onClick={() => window.bethel.openUrl(update.url!)}
-            >
-              前往下载
-            </button>
+            {update.kind === 'downloaded' ? (
+              <>
+                <span>
+                  ✅ 新版本 v{update.version} 已自动下载完成
+                  {installErr ? ` — ${installErr}` : '，重启即可完成升级'}
+                </span>
+                <button className="btn btn-primary btn-banner" onClick={installNow}>
+                  立即重启更新
+                </button>
+              </>
+            ) : (
+              <>
+                <span>🎉 新版本 v{update.version} 已发布</span>
+                <button
+                  className="btn btn-primary btn-banner"
+                  onClick={() => window.bethel.openUrl(update.url)}
+                >
+                  前往下载
+                </button>
+              </>
+            )}
             <button className="btn btn-banner" onClick={() => setUpdate(null)}>
               稍后再说
             </button>

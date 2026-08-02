@@ -15,10 +15,15 @@ extraResources:
     to: bin
     filter:
       - '**/*'
+publish:
+  provider: github
+  owner: AmoseCP
+  repo: Bethel-Live
 mac:
   target:
     - dmg
   icon: build/icon.png
+  artifactName: ${name}-${version}-${arch}.${ext}
   category: public.app-category.video
   extendInfo:
     NSCameraUsageDescription: Bethel Live 需要访问摄像头以采集直播画面
@@ -29,8 +34,8 @@ win:
     - nsis
   icon: build/icon.png
 nsis:
+  artifactName: ${name}-${version}-setup.${ext}
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   shortcutName: Bethel Live
-publish: null

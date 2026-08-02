@@ -41,7 +41,11 @@ jobs:
         include:
           - os: windows-latest
             script: build:win
-            artifact: release/*.exe
+            # exe + 更新元数据 + 差量更新块图（应用内自动更新依赖后两者）
+            artifact: |
+              release/*.exe
+              release/*.exe.blockmap
+              release/latest.yml
           - os: macos-latest
             script: build:mac
             artifact: release/*.dmg
