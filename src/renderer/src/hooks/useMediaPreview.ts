@@ -31,7 +31,9 @@ export function useMediaPreview(
   source: VideoSourceKind,
   videoDeviceId: string,
   audioDeviceId: string,
-  enabled: boolean
+  enabled: boolean,
+  /** false = 暂不占用视频设备（Windows 推流期间摄像头须让给 FFmpeg 独占） */
+  videoEnabled: boolean = true
 ): PreviewState {
   const [state, setState] = useState<PreviewState>({
     videoStream: null,
@@ -60,7 +62,9 @@ export function useMediaPreview(
       let video: MediaStream | null = null
       let videoError: string | null = null
       try {
-        if (source === 'screen') {
+        if (!videoEnabled) {
+          video = null
+        } else if (source === 'screen') {
           video = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
         } else {
           await window.bethel.media.requestAccess('camera')
@@ -115,7 +119,7 @@ export function useMediaPreview(
     return () => {
       cancelled = true
     }
-  }, [source, videoDeviceId, audioDeviceId, enabled])
+  }, [source, videoDeviceId, audioDeviceId, enabled, videoEnabled])
 
   // 卸载时释放
   useEffect(() => {

@@ -33,6 +33,8 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [monitorOn, setMonitorOn] = useState(false)
+  const [videoReleased, setVideoReleased] = useState(false)
+  const [errCopied, setErrCopied] = useState(false)
   const [streamDown, setStreamDown] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [scheduleTime, setScheduleTime] = useState('')
@@ -114,6 +116,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
 
       if (!reconnecting.current) {
         setError(`推流进程意外退出（码 ${info.code}）\n${info.logTail}`)
+        setVideoReleased(false)
         setPhase('created')
       }
     })
@@ -126,12 +129,22 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   }, [refreshTitleInfo])
 
   const source: VideoSourceKind = settings?.videoSource ?? 'camera'
+  // Windows 摄像头为独占设备：推流期间预览必须让位给 FFmpeg
+  const isWin = window.bethel.platform === 'win32'
   const preview = useMediaPreview(
     source,
     settings?.videoDeviceId ?? '',
     settings?.audioDeviceId ?? '',
-    settings !== null
+    settings !== null,
+    !(isWin && source === 'camera' && videoReleased)
   )
+
+  /** Windows + 摄像头源：释放预览占用并等待设备真正空出来 */
+  const releaseCameraForFfmpeg = useCallback(async (): Promise<void> => {
+    if (!isWin) return
+    setVideoReleased(true)
+    await new Promise((r) => setTimeout(r, 500))
+  }, [isWin])
 
   // 回调 ref：迷你/完整两套布局共用同一条预览流
   const attachVideo = useCallback(
@@ -152,6 +165,8 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
         await window.bethel.stream.stop()
         const audioLabel = preview.audioStream?.getAudioTracks()[0]?.label ?? ''
         const startOpts = { rtmpUrl: session.rtmpUrl, source: next, videoLabel: '', audioLabel }
+        if (next === 'camera') await releaseCameraForFfmpeg()
+        else setVideoReleased(false)
         try {
           await window.bethel.stream.start(startOpts)
           lastStartOpts.current = startOpts
@@ -205,7 +220,13 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
         videoLabel: preview.videoStream?.getVideoTracks()[0]?.label ?? '',
         audioLabel: preview.audioStream?.getAudioTracks()[0]?.label ?? ''
       }
-      await window.bethel.stream.start(startOpts)
+      if (source === 'camera') await releaseCameraForFfmpeg()
+      try {
+        await window.bethel.stream.start(startOpts)
+      } catch (e) {
+        setVideoReleased(false) // 启动失败，预览拿回摄像头
+        throw e
+      }
       lastStartOpts.current = startOpts
       setPhase('pushing')
 
@@ -229,12 +250,13 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
         await window.bethel.youtube.transition(sess.broadcast.broadcastId, 'testing')
       } catch (e) {
         await window.bethel.stream.stop().catch(() => {})
+        setVideoReleased(false)
         setPhase('created')
         throw e
       }
       setPhase('testing')
     },
-    [source, preview.videoStream, preview.audioStream]
+    [source, preview.videoStream, preview.audioStream, releaseCameraForFfmpeg]
   )
 
   const startTest = (): Promise<void> =>
@@ -266,6 +288,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
         }
       }
       await window.bethel.stream.stop()
+      setVideoReleased(false)
       setPhase('complete')
       setLiveStartAt(null)
     })
@@ -455,7 +478,11 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
         <video ref={attachVideo} autoPlay muted playsInline className="preview-video" />
         {!hasSignal && (
           <div className="preview-overlay">
-            {preview.videoError ? `⚠ 无法打开视频源：${preview.videoError}` : '正在等待视频信号…'}
+            {isWin && source === 'camera' && videoReleased && streamingActive
+              ? '📡 推流中：摄像头画面已交给推流引擎（Windows 独占限制）。下方码率/帧率跳动即推流正常，可用手机打开分享链接核对画面。'
+              : preview.videoError
+                ? `⚠ 无法打开视频源：${preview.videoError}`
+                : '正在等待视频信号…'}
           </div>
         )}
         {stats && streamingActive && (
@@ -602,6 +629,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
                   onClick={() =>
                     run('正在停止推流…', async () => {
                       await window.bethel.stream.stop()
+                      setVideoReleased(false)
                       setPhase('created')
                     })
                   }
@@ -650,7 +678,21 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
         )}
 
         {busy && <p className="busy-tip">{busy}</p>}
-        {error && <p className="error-tip">⚠ {error}</p>}
+        {error && (
+          <div className="error-tip error-tip-row">
+            <span className="error-text">⚠ {error}</span>
+            <button
+              className="btn btn-mini"
+              onClick={async () => {
+                await navigator.clipboard.writeText(error)
+                setErrCopied(true)
+                setTimeout(() => setErrCopied(false), 1500)
+              }}
+            >
+              {errCopied ? '✓ 已复制' : '📋 复制报错'}
+            </button>
+          </div>
+        )}
       </section>
 
       {shareOpen && session && (

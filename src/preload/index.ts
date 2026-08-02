@@ -23,6 +23,7 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
 
 // 渲染进程可用的 API 桥，随阶段逐步扩充
 const api = {
+  platform: process.platform,
   getVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
   checkUpdate: (): Promise<UpdateCheckResult> => ipcRenderer.invoke('app:checkUpdate'),
   onUpdateAvailable: (cb: (r: UpdateCheckResult) => void): (() => void) =>
