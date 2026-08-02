@@ -65,6 +65,9 @@ const api = {
   window: {
     setMini: (mini: boolean): Promise<void> => ipcRenderer.invoke('window:setMini', mini)
   },
+  screens: {
+    list: (): Promise<{ id: string; label: string }[]> => ipcRenderer.invoke('screens:list')
+  },
   telegram: {
     send: (text: string): Promise<void> => ipcRenderer.invoke('telegram:send', text)
   },

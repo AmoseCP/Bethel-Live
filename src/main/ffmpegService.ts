@@ -17,6 +17,27 @@ import { getSettings } from './settingsStore'
 import { buildStreamArgs, CaptureTarget, QUALITY_PRESETS } from './core/ffmpegArgs'
 import type { VideoSourceKind } from '../shared/settings'
 
+/** 显示器列表（主屏固定排在最前，与 avfoundation 屏幕序号约定一致） */
+export function orderedDisplays(): Electron.Display[] {
+  const primary = screen.getPrimaryDisplay()
+  const rest = screen.getAllDisplays().filter((d) => d.id !== primary.id)
+  return [primary, ...rest]
+}
+
+/** 用户所选显示器（保存值缺失/已拔出时回落主屏） */
+function chosenDisplay(): Electron.Display {
+  const saved = getSettings().captureDisplayId
+  const list = orderedDisplays()
+  return list.find((d) => String(d.id) === saved) ?? list[0]
+}
+
+/** 所选显示器在主屏在前列表中的序号 */
+function chosenDisplayOrdinal(): number {
+  const saved = getSettings().captureDisplayId
+  const idx = orderedDisplays().findIndex((d) => String(d.id) === saved)
+  return idx >= 0 ? idx : 0
+}
+
 /** 打包后优先用随应用分发的 ffmpeg（resources/bin），否则用系统 PATH 中的 */
 export function ffmpegPath(): string {
   const bundled = join(
@@ -88,29 +109,22 @@ async function startStreamInner(opts: StreamStartOptions): Promise<void> {
     source: opts.source
   }
 
-  const audio =
-    matchDeviceByLabel(devices.audio, opts.audioLabel) ??
-    devices.audio.find((d) => /focusrite|analogue/i.test(d.name)) ??
-    devices.audio[0]
+  const audio = matchDeviceByLabel(devices.audio, opts.audioLabel) ?? devices.audio[0]
   if (!audio) throw new Error('未找到可用的音频采集设备')
 
   if (opts.source === 'screen' && target.platform === 'darwin') {
-    const screenDev = pickScreenDevice(devices.video, getSettings().screenPreference)
+    // 所选显示器 → avfoundation 屏幕序号：主屏在前的显示器列表中的位置
+    const screenDev = pickScreenDevice(devices.video, chosenDisplayOrdinal())
     if (!screenDev) throw new Error('未找到屏幕捕获设备（请在系统设置中授权屏幕录制）')
     target.videoIndex = screenDev.index
   } else if (opts.source === 'screen') {
-    // Windows：按偏好换算所选屏幕的物理像素区域
-    const pref = getSettings().screenPreference
-    const primary = screen.getPrimaryDisplay()
-    const externals = screen.getAllDisplays().filter((d) => d.id !== primary.id)
-    const chosen = pref === 'primary' ? primary : (externals[0] ?? primary)
-    // 混合 DPI 多屏下 bounds×scaleFactor 会算错物理原点，用系统换算
+    // Windows：所选显示器的物理像素区域（混合 DPI 用系统换算）
+    const chosen = chosenDisplay()
     const rect = screen.dipToScreenRect(null, chosen.bounds)
     target.screenRegion = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
   } else if (opts.source === 'camera') {
     const video =
       matchDeviceByLabel(devices.video, opts.videoLabel) ??
-      devices.video.find((d) => /gc311g2|streamline/i.test(d.name)) ??
       devices.video.find((d) => !/capture screen/i.test(d.name))
     if (!video) throw new Error('未找到可用的摄像头设备')
     target.videoIndex = video.index

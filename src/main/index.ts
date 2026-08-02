@@ -197,16 +197,18 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   ipcMain.handle('window:setMini', (_e, mini: boolean) => setMiniMode(mini))
 
-  // 渲染进程 getDisplayMedia（屏幕预览源）：按设置选屏，不弹选择器
+  // 渲染进程 getDisplayMedia（屏幕预览源）：按设置中所选显示器取源，不弹选择器
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
     desktopCapturer
       .getSources({ types: ['screen'] })
       .then((sources) => {
-        const pref = getSettings().screenPreference
+        const saved = getSettings().captureDisplayId
         const primaryId = String(screen.getPrimaryDisplay().id)
-        const primary = sources.find((s) => s.display_id === primaryId) ?? sources[0]
-        const external = sources.find((s) => s.display_id && s.display_id !== primaryId)
-        callback({ video: pref === 'primary' ? primary : (external ?? primary) })
+        const chosen =
+          sources.find((s) => s.display_id === saved) ??
+          sources.find((s) => s.display_id === primaryId) ??
+          sources[0]
+        callback({ video: chosen })
       })
       .catch(() => callback({}))
   })

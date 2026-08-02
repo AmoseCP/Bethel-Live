@@ -5,6 +5,7 @@ import { getSettings, updateSettings } from './settingsStore'
 import { getDefaultTitle, getTitleOptions } from './core/titleGenerator'
 import * as yt from './youtubeService'
 import * as ff from './ffmpegService'
+import { orderedDisplays } from './ffmpegService'
 import { sendTelegramMessage } from './core/telegram'
 import { checkForUpdate } from './core/updateCheck'
 import { shell } from 'electron'
@@ -69,6 +70,14 @@ export function registerIpcHandlers(): void {
     const { telegramBotToken, telegramChatId } = getSettings()
     await sendTelegramMessage(telegramBotToken, telegramChatId, text)
   })
+
+  // ---- 屏幕列表（屏幕直播采集目标） ----
+  ipcMain.handle('screens:list', () =>
+    orderedDisplays().map((d, i) => ({
+      id: String(d.id),
+      label: `${d.label || (i === 0 ? '主屏幕' : `屏幕 ${i + 1}`)}（${d.bounds.width}×${d.bounds.height}${i === 0 ? '，主屏' : ''}）`
+    }))
+  )
 
   // ---- FFmpeg 推流 ----
   ipcMain.handle('stream:start', (_e, opts: ff.StreamStartOptions) => {

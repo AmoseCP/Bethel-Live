@@ -66,18 +66,16 @@ describe('pickScreenDevice', () => {
     ...one,
     { index: 3, name: 'Capture screen 1' }
   ]
-  it('单屏：任何偏好都取唯一屏幕', () => {
-    expect(pickScreenDevice(one, 'auto')?.index).toBe(2)
-    expect(pickScreenDevice(one, 'external')?.index).toBe(2)
-    expect(pickScreenDevice(one, 'primary')?.index).toBe(2)
+  it('按序号取屏：0=主屏，1=第二块', () => {
+    expect(pickScreenDevice(two, 0)?.name).toBe('Capture screen 0')
+    expect(pickScreenDevice(two, 1)?.name).toBe('Capture screen 1')
   })
-  it('双屏：auto/external 取外接屏（第二块），primary 取主屏', () => {
-    expect(pickScreenDevice(two, 'auto')?.name).toBe('Capture screen 1')
-    expect(pickScreenDevice(two, 'external')?.name).toBe('Capture screen 1')
-    expect(pickScreenDevice(two, 'primary')?.name).toBe('Capture screen 0')
+  it('序号越界回落主屏', () => {
+    expect(pickScreenDevice(one, 1)?.index).toBe(2)
+    expect(pickScreenDevice(two, 5)?.name).toBe('Capture screen 0')
   })
   it('无屏幕设备返回 null', () => {
-    expect(pickScreenDevice([{ index: 0, name: 'FaceTime HD Camera' }], 'auto')).toBeNull()
+    expect(pickScreenDevice([{ index: 0, name: 'FaceTime HD Camera' }], 0)).toBeNull()
   })
 })
 

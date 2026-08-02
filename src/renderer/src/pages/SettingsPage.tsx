@@ -36,9 +36,11 @@ export default function SettingsPage(): JSX.Element {
   const [audioDevices, setAudioDevices] = useState<DeviceOption[]>([])
   const [savedTip, setSavedTip] = useState(false)
   const [ytConnected, setYtConnected] = useState<boolean | null>(null)
+  const [screens, setScreens] = useState<{ id: string; label: string }[]>([])
 
   useEffect(() => {
     window.bethel.youtube.isAuthorized().then(setYtConnected)
+    window.bethel.screens.list().then(setScreens)
     window.bethel.settings.get().then(setSettings)
     enumerateInputs().then(({ video, audio }) => {
       setVideoDevices(video)
@@ -150,12 +152,12 @@ export default function SettingsPage(): JSX.Element {
       <section className="panel">
         <h3 className="panel-title">采集设备</h3>
         <label className="field">
-          <span>视频设备（默认自动匹配 GC311G2 采集卡）</span>
+          <span>默认视频设备（在检测到的设备中选择，保存后一直生效）</span>
           <select
-            value={settings.videoDeviceId}
+            value={settings.videoDeviceId || videoDevices[0]?.deviceId || ''}
             onChange={(e) => set('videoDeviceId', e.target.value)}
           >
-            <option value="">自动（优先 StreamLine Mini+ GC311G2）</option>
+            {videoDevices.length === 0 && <option value="">未检测到视频设备</option>}
             {videoDevices.map((d) => (
               <option key={d.deviceId} value={d.deviceId}>
                 {d.label}
@@ -164,28 +166,28 @@ export default function SettingsPage(): JSX.Element {
           </select>
         </label>
         <label className="field">
-          <span>屏幕直播采集的屏幕（放映 PPT 用）</span>
+          <span>默认音频设备（在检测到的设备中选择，保存后一直生效）</span>
           <select
-            value={settings.screenPreference}
-            onChange={(e) =>
-              set('screenPreference', e.target.value as AppSettings['screenPreference'])
-            }
-          >
-            <option value="auto">自动（接了外接屏时优先外接屏 — 推荐）</option>
-            <option value="external">外接屏幕（PPT 放映画面）</option>
-            <option value="primary">主屏幕（笔记本屏幕）</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>音频设备（默认自动匹配 Focusrite USB 声卡）</span>
-          <select
-            value={settings.audioDeviceId}
+            value={settings.audioDeviceId || audioDevices[0]?.deviceId || ''}
             onChange={(e) => set('audioDeviceId', e.target.value)}
           >
-            <option value="">自动（优先 Analogue 1 + 2 Focusrite）</option>
+            {audioDevices.length === 0 && <option value="">未检测到音频设备</option>}
             {audioDevices.map((d) => (
               <option key={d.deviceId} value={d.deviceId}>
                 {d.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>屏幕直播采集的屏幕（放映 PPT 用，保存后一直生效）</span>
+          <select
+            value={settings.captureDisplayId || screens[0]?.id || ''}
+            onChange={(e) => set('captureDisplayId', e.target.value)}
+          >
+            {screens.map((sc) => (
+              <option key={sc.id} value={sc.id}>
+                {sc.label}
               </option>
             ))}
           </select>

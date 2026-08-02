@@ -1,22 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import type { VideoSourceKind } from '../../../shared/settings'
-import {
-  pickDevice,
-  PREFERRED_AUDIO_PATTERN,
-  PREFERRED_VIDEO_PATTERN
-} from '../../../shared/devices'
+import { pickDevice } from '../../../shared/devices'
 
-/** 自动模式（savedId 为空）时按首选型号匹配设备：GC311G2 采集卡 / Focusrite 声卡 */
+/** 设备解析：用户保存的选择优先，否则取检测列表第一个 */
 async function resolveDeviceId(
   kind: 'videoinput' | 'audioinput',
-  savedId: string,
-  preferred: RegExp
+  savedId: string
 ): Promise<string> {
   const all = await navigator.mediaDevices.enumerateDevices()
   const devices = all
     .filter((d) => d.kind === kind && d.deviceId && d.deviceId !== 'default')
     .map((d) => ({ deviceId: d.deviceId, label: d.label }))
-  return pickDevice(devices, savedId, preferred)?.deviceId ?? ''
+  return pickDevice(devices, savedId)?.deviceId ?? ''
 }
 
 export interface PreviewState {
@@ -69,7 +64,7 @@ export function useMediaPreview(
           video = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
         } else {
           await window.bethel.media.requestAccess('camera')
-          const vid = await resolveDeviceId('videoinput', videoDeviceId, PREFERRED_VIDEO_PATTERN)
+          const vid = await resolveDeviceId('videoinput', videoDeviceId)
           video = await navigator.mediaDevices.getUserMedia({
             video: vid ? { deviceId: { exact: vid } } : true,
             audio: false
@@ -87,7 +82,7 @@ export function useMediaPreview(
       let audioError: string | null = null
       try {
         await window.bethel.media.requestAccess('microphone')
-        const aid = await resolveDeviceId('audioinput', audioDeviceId, PREFERRED_AUDIO_PATTERN)
+        const aid = await resolveDeviceId('audioinput', audioDeviceId)
         // 关闭回声消除/自动增益/降噪：电平表与试听必须反映 ffmpeg 实际推流的原始信号
         const rawAudio = {
           echoCancellation: false,
