@@ -37,6 +37,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   const [ffPreviewUrl, setFfPreviewUrl] = useState<string | null>(null)
   const ffPreviewUrlRef = useRef<string | null>(null)
   const [errCopied, setErrCopied] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const [streamDown, setStreamDown] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [scheduleTime, setScheduleTime] = useState('')
@@ -202,6 +203,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   const run = useCallback(async (label: string, fn: () => Promise<void>): Promise<void> => {
     setBusy(label)
     setError(null)
+    setNotice(null)
     try {
       await fn()
     } catch (e) {
@@ -344,8 +346,22 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
       await window.bethel.youtube.transition(sess.broadcast.broadcastId, 'live')
       setPhase('live')
       setLiveStartAt(Date.now())
+
+      // 无人值守：开播后自动把链接发到 Telegram 群组（已配置时）
+      if (settings?.telegramBotToken && settings?.telegramChatId) {
+        try {
+          await window.bethel.telegram.send(`${sess.broadcast.title}\n${sess.shareLink}`)
+          setNotice('📤 直播链接已自动发送到 Telegram 群组')
+        } catch (e) {
+          setError(
+            `直播已正常开始，但 Telegram 自动发送失败：${e instanceof Error ? e.message : e}\n可点「分享到 Telegram」手动发送。`
+          )
+        }
+      } else {
+        setNotice('直播已开始。未配置 Telegram，已跳过自动分享链接。')
+      }
     })
-  }, [run, doStartTest, title, description, preview.videoStream, preview.audioStream])
+  }, [run, doStartTest, title, description, preview.videoStream, preview.audioStream, settings])
   const autoStartRef = useRef(autoStart)
   autoStartRef.current = autoStart
 
@@ -418,6 +434,11 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   const hasSignal =
     preview.videoStream !== null &&
     preview.videoStream.getVideoTracks().some((t) => t.readyState === 'live')
+
+  // 定时倒计时期间的就绪自检（画面 + 音频设备），有问题提前暴露
+  const scheduleVideoOk = hasSignal
+  const scheduleAudioOk = (preview.audioStream?.getAudioTracks().length ?? 0) > 0
+  const scheduleReady = scheduleVideoOk && scheduleAudioOk
 
   const streamingActive = phase === 'pushing' || phase === 'testing' || phase === 'live'
 
@@ -623,6 +644,11 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
                   <span className="schedule-armed">
                     ⏰ 将于 {scheduleTime} 自动开播（倒计时 {countdown || '…'}）
                   </span>
+                  <span className={scheduleReady ? 'saved-tip' : 'error-tip'} style={{ margin: 0, fontSize: 12 }}>
+                    {scheduleReady
+                      ? '✓ 画面与声音就绪'
+                      : `⚠ ${scheduleVideoOk ? '' : '无画面 '}${scheduleAudioOk ? '' : '无音频设备 '}— 请在开播前处理`}
+                  </span>
                   <button className="btn" onClick={() => setScheduledAt(null)}>
                     取消定时
                   </button>
@@ -709,6 +735,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
         )}
 
         {busy && <p className="busy-tip">{busy}</p>}
+        {notice && <p className="saved-tip" style={{ marginTop: 10 }}>{notice}</p>}
         {error && (
           <div className="error-tip error-tip-row">
             <span className="error-text">⚠ {error}</span>
