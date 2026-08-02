@@ -45,24 +45,28 @@ export async function manualCheck(): Promise<UpdateCheckResult> {
 
 export async function setupUpdates(onBeforeInstall: () => void): Promise<void> {
   if (process.platform === 'win32' && app.isPackaged) {
-    const { autoUpdater } = await import('electron-updater')
-    autoUpdaterRef = autoUpdater
-    autoUpdater.autoDownload = true
-    autoUpdater.autoInstallOnAppQuit = true
-    autoUpdater.on('update-downloaded', (info) => {
-      broadcast('update:downloaded', { version: info.version })
-    })
-    ipcMain.handle('update:install', () => {
-      if (isStreaming()) throw new Error('直播推流进行中，请结束直播后再重启更新')
-      onBeforeInstall()
-      autoUpdater.quitAndInstall(true, true)
-    })
-    const check = (): void => {
-      autoUpdater.checkForUpdates().catch(() => {})
+    try {
+      const { autoUpdater } = await import('electron-updater')
+      autoUpdaterRef = autoUpdater
+      autoUpdater.autoDownload = true
+      autoUpdater.autoInstallOnAppQuit = true
+      autoUpdater.on('update-downloaded', (info) => {
+        broadcast('update:downloaded', { version: info.version })
+      })
+      ipcMain.handle('update:install', () => {
+        if (isStreaming()) throw new Error('直播推流进行中，请结束直播后再重启更新')
+        onBeforeInstall()
+        autoUpdater.quitAndInstall(true, true)
+      })
+      const check = (): void => {
+        autoUpdater.checkForUpdates().catch(() => {})
+      }
+      setTimeout(check, 8_000)
+      setInterval(check, 4 * 3600_000)
+      return
+    } catch (e) {
+      console.error('electron-updater 初始化失败，回落为提醒模式：', e)
     }
-    setTimeout(check, 8_000)
-    setInterval(check, 4 * 3600_000)
-    return
   }
 
   ipcMain.handle('update:install', () => {

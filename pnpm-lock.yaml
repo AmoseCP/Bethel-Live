@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      electron-updater:
-        specifier: ^6.8.9
-        version: 6.8.9(supports-color@7.2.0)
     devDependencies:
       '@playwright/test':
         specifier: ^1.62.1
@@ -33,6 +29,9 @@ importers:
       electron-builder:
         specifier: ^26.15.3
         version: 26.15.3(electron-builder-squirrel-windows@26.15.3)(supports-color@7.2.0)
+      electron-updater:
+        specifier: ^6.8.9
+        version: 6.8.9(supports-color@7.2.0)
       electron-vite:
         specifier: ^5.0.0
         version: 5.0.0(supports-color@7.2.0)(vite@8.2.0(@types/node@26.1.2)(jiti@2.7.0))
