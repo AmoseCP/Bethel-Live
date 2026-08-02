@@ -50,7 +50,7 @@ pnpm build:win      # 打包 Windows NSIS 安装包（在 Windows 上执行）
 
 产物在 `release/` 目录。无签名证书时用 `CSC_IDENTITY_AUTO_DISCOVERY=false pnpm build:mac` 跳过 macOS 签名。
 
-**内置 FFmpeg（可选）**：把对应平台的 ffmpeg 静态可执行文件放入 `resources/bin/`（macOS 名为 `ffmpeg`，Windows 名为 `ffmpeg.exe`）再打包，即随应用分发；否则应用运行时使用系统 PATH 中的 ffmpeg。详见 `resources/bin/README.txt`。
+**内置 FFmpeg**：CI 发布流水线会自动为 **Windows** 安装包内置 ffmpeg.exe（gyan.dev essentials 构建，GPL 许可——本项目遵照其条款分发并致谢 [FFmpeg](https://ffmpeg.org) 项目，源码见其官网）；macOS 暂使用系统 ffmpeg（`brew install ffmpeg`）。本地打包想内置可手动把可执行文件放入 `resources/bin/`。
 
 ## Logo
 

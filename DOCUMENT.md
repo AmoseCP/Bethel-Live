@@ -9,7 +9,7 @@ Bethel Live 是为教会直播设计的 YouTube 推流软件：一键创建直�
 - **Windows**：运行 `Bethel Live Setup x.x.x.exe` 安装包，按向导完成安装。
 - **macOS**：打开 `.dmg`，把 Bethel Live 拖入「应用程序」文件夹。首次打开如提示未验证开发者，请在「系统设置 → 隐私与安全性」中点「仍要打开」。
 
-> 软件依赖 FFmpeg 进行推流。若安装包未内置，请先安装：macOS 执行 `brew install ffmpeg`；Windows 从 gyan.dev 下载并加入 PATH。
+> 推流引擎说明：**Windows 安装包已内置 FFmpeg**（v0.1.6 起），装完即用；macOS 需先执行 `brew install ffmpeg`（一次即可）。
 
 ## 2. 首次配置
 

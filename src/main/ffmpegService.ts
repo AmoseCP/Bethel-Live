@@ -51,13 +51,24 @@ export function ffmpegPath(): string {
 
 /** 枚举 FFmpeg 可见的采集设备（结果解析为统一结构） */
 export function listCaptureDevices(): Promise<FfDeviceList> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const args =
       process.platform === 'darwin'
         ? ['-hide_banner', '-f', 'avfoundation', '-list_devices', 'true', '-i', '']
         : ['-hide_banner', '-f', 'dshow', '-list_devices', 'true', '-i', 'dummy']
     // 列设备时 ffmpeg 以非零码退出属正常，只取 stderr
-    execFile(ffmpegPath(), args, { timeout: 10_000 }, (_err, _stdout, stderr) => {
+    execFile(ffmpegPath(), args, { timeout: 10_000 }, (err, _stdout, stderr) => {
+      const code = (err as NodeJS.ErrnoException | null)?.code
+      if (code === 'ENOENT') {
+        reject(
+          new Error(
+            process.platform === 'win32'
+              ? '未找到 FFmpeg：请下载内置 FFmpeg 的新版安装包重新安装，或手动安装 ffmpeg 并加入 PATH'
+              : '未找到 FFmpeg：请执行 brew install ffmpeg 后重试'
+          )
+        )
+        return
+      }
       resolve(
         process.platform === 'darwin'
           ? parseAvfoundationDevices(String(stderr))

@@ -69,6 +69,15 @@ jobs:
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
 
+      - name: 内置 FFmpeg（Windows 安装包自带，用户无需手动安装）
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-tmp
+          Copy-Item ffmpeg-tmp/*/bin/ffmpeg.exe resources/bin/ffmpeg.exe
+          & resources/bin/ffmpeg.exe -version | Select-Object -First 1
+
       - name: 单元测试（打包前最后防线）
         run: pnpm test
 
