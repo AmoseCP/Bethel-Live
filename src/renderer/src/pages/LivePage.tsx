@@ -490,9 +490,10 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
       </div>
 
       <div className="preview-box">
-        <video ref={attachVideo} autoPlay muted playsInline className="preview-video" />
-        {!hasSignal && ffPreviewUrl && streamingActive && (
+        {!hasSignal && ffPreviewUrl && streamingActive ? (
           <img src={ffPreviewUrl} className="preview-video" alt="推流画面" />
+        ) : (
+          <video ref={attachVideo} autoPlay muted playsInline className="preview-video" />
         )}
         {!hasSignal && !(ffPreviewUrl && streamingActive) && (
           <div className="preview-overlay">
