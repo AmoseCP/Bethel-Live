@@ -1,7 +1,7 @@
 {
   "name": "bethel-live",
   "productName": "Bethel Live",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "description": "Bethel Live — 教会 YouTube 直播推流桌面应用",
   "main": "./out/main/index.js",
   "author": "AmoseCP <amose.d@christianpost.com>",
