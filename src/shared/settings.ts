@@ -25,8 +25,8 @@ export interface AppSettings {
   closeAction: 'ask' | 'quit' | 'tray'
   /** 界面主题 */
   theme: ThemeKind
-  /** 直播画质档位 */
-  quality: 'high' | 'medium' | 'low'
+  /** 直播画质档位（默认 720p 高清） */
+  quality: 'fullhd' | 'high' | 'medium' | 'low'
 }
 
 /** 磁盘上必须加密存储的字段（safeStorage） */

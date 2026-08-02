@@ -104,6 +104,8 @@ describe('编码参数', () => {
 describe('画质预设', () => {
   it('三档码率递减且分辨率合法', async () => {
     const { QUALITY_PRESETS } = await import('../../src/main/core/ffmpegArgs')
+    expect(QUALITY_PRESETS.fullhd.videoBitrateKbps).toBeGreaterThan(QUALITY_PRESETS.high.videoBitrateKbps)
+    expect(QUALITY_PRESETS.fullhd.width).toBe(1920)
     expect(QUALITY_PRESETS.high.videoBitrateKbps).toBeGreaterThan(QUALITY_PRESETS.medium.videoBitrateKbps)
     expect(QUALITY_PRESETS.medium.videoBitrateKbps).toBeGreaterThan(QUALITY_PRESETS.low.videoBitrateKbps)
     expect(QUALITY_PRESETS.low.width).toBe(854)

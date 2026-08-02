@@ -142,7 +142,8 @@ export default function SettingsPage(): JSX.Element {
             value={settings.quality}
             onChange={(e) => set('quality', e.target.value as AppSettings['quality'])}
           >
-            <option value="high">高清 720p · 4.5Mbps（需稳定上行 ≥ 6Mbps）</option>
+            <option value="fullhd">超清 1080p · 6Mbps（需稳定上行 ≥ 8Mbps）</option>
+            <option value="high">高清 720p · 4.5Mbps（需稳定上行 ≥ 6Mbps，默认）</option>
             <option value="medium">标准 720p · 2.5Mbps（需稳定上行 ≥ 3.5Mbps）</option>
             <option value="low">流畅 480p · 1.2Mbps（需稳定上行 ≥ 2Mbps）</option>
           </select>
