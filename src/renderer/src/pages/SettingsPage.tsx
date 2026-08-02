@@ -2,6 +2,7 @@ import { useEffect, useState, type JSX } from 'react'
 import type { AppSettings } from '../../../shared/settings'
 import { THEME_OPTIONS, type ThemeKind } from '../../../shared/theme'
 import { applyTheme } from '../applyTheme'
+import { useI18n } from '../i18n'
 
 interface DeviceOption {
   deviceId: string
@@ -31,6 +32,7 @@ async function enumerateInputs(): Promise<{ video: DeviceOption[]; audio: Device
 }
 
 export default function SettingsPage(): JSX.Element {
+  const { t } = useI18n()
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [videoDevices, setVideoDevices] = useState<DeviceOption[]>([])
   const [audioDevices, setAudioDevices] = useState<DeviceOption[]>([])
@@ -48,7 +50,7 @@ export default function SettingsPage(): JSX.Element {
     })
   }, [])
 
-  if (!settings) return <div className="page">加载中…</div>
+  if (!settings) return <div className="page">{t('加载中…')}</div>
 
   const set = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void =>
     setSettings({ ...settings, [key]: value })
@@ -68,10 +70,10 @@ export default function SettingsPage(): JSX.Element {
 
   return (
     <div className="page">
-      <h2 className="page-title">设置</h2>
+      <h2 className="page-title">{t('设置')}</h2>
 
       <section className="panel">
-        <h3 className="panel-title">Google API 凭据</h3>
+        <h3 className="panel-title">{t('Google API 凭据')}</h3>
         <label className="field">
           <span>Client ID</span>
           <input
@@ -81,7 +83,7 @@ export default function SettingsPage(): JSX.Element {
           />
         </label>
         <label className="field">
-          <span>Client Secret（加密存储）</span>
+          <span>{t('Client Secret（加密存储）')}</span>
           <input
             type="password"
             value={settings.googleClientSecret}
@@ -90,7 +92,7 @@ export default function SettingsPage(): JSX.Element {
         </label>
         <div className="field-inline" style={{ marginTop: 4 }}>
           <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-            YouTube 账号：{ytConnected === null ? '…' : ytConnected ? '✓ 已连接' : '未连接（去「直播」页连接）'}
+            {t('YouTube 账号：')}{ytConnected === null ? '…' : ytConnected ? t('✓ 已连接') : t('未连接（去「直播」页连接）')}
           </span>
           {ytConnected && (
             <button
@@ -101,7 +103,7 @@ export default function SettingsPage(): JSX.Element {
                 setYtConnected(false)
               }}
             >
-              断开连接
+              {t('断开连接')}
             </button>
           )}
         </div>
@@ -110,7 +112,7 @@ export default function SettingsPage(): JSX.Element {
       <section className="panel">
         <h3 className="panel-title">Telegram</h3>
         <label className="field">
-          <span>Bot API Token（加密存储）</span>
+          <span>{t('Bot API Token（加密存储）')}</span>
           <input
             type="password"
             value={settings.telegramBotToken}
@@ -118,7 +120,7 @@ export default function SettingsPage(): JSX.Element {
           />
         </label>
         <label className="field">
-          <span>目标群组 Chat ID</span>
+          <span>{t('目标群组 Chat ID')}</span>
           <input
             value={settings.telegramChatId}
             onChange={(e) => set('telegramChatId', e.target.value)}
@@ -128,37 +130,37 @@ export default function SettingsPage(): JSX.Element {
       </section>
 
       <section className="panel">
-        <h3 className="panel-title">直播默认值</h3>
+        <h3 className="panel-title">{t('直播默认值')}</h3>
         <label className="field">
-          <span>默认直播描述</span>
+          <span>{t('默认直播描述')}</span>
           <input
             value={settings.defaultDescription}
             onChange={(e) => set('defaultDescription', e.target.value)}
           />
         </label>
         <label className="field">
-          <span>直播画质（按场地网络上行带宽选择）</span>
+          <span>{t('直播画质（按场地网络上行带宽选择）')}</span>
           <select
             value={settings.quality}
             onChange={(e) => set('quality', e.target.value as AppSettings['quality'])}
           >
-            <option value="fullhd">超清 1080p · 6Mbps（需稳定上行 ≥ 8Mbps）</option>
-            <option value="high">高清 720p · 4.5Mbps（需稳定上行 ≥ 6Mbps，默认）</option>
-            <option value="medium">标准 720p · 2.5Mbps（需稳定上行 ≥ 3.5Mbps）</option>
-            <option value="low">流畅 480p · 1.2Mbps（需稳定上行 ≥ 2Mbps）</option>
+            <option value="fullhd">{t('超清 1080p · 6Mbps（需稳定上行 ≥ 8Mbps）')}</option>
+            <option value="high">{t('高清 720p · 4.5Mbps（需稳定上行 ≥ 6Mbps，默认）')}</option>
+            <option value="medium">{t('标准 720p · 2.5Mbps（需稳定上行 ≥ 3.5Mbps）')}</option>
+            <option value="low">{t('流畅 480p · 1.2Mbps（需稳定上行 ≥ 2Mbps）')}</option>
           </select>
         </label>
       </section>
 
       <section className="panel">
-        <h3 className="panel-title">采集设备</h3>
+        <h3 className="panel-title">{t('采集设备')}</h3>
         <label className="field">
-          <span>默认视频设备（在检测到的设备中选择，保存后一直生效）</span>
+          <span>{t('默认视频设备（在检测到的设备中选择，保存后一直生效）')}</span>
           <select
             value={settings.videoDeviceId || videoDevices[0]?.deviceId || ''}
             onChange={(e) => set('videoDeviceId', e.target.value)}
           >
-            {videoDevices.length === 0 && <option value="">未检测到视频设备</option>}
+            {videoDevices.length === 0 && <option value="">{t('未检测到视频设备')}</option>}
             {videoDevices.map((d) => (
               <option key={d.deviceId} value={d.deviceId}>
                 {d.label}
@@ -167,12 +169,12 @@ export default function SettingsPage(): JSX.Element {
           </select>
         </label>
         <label className="field">
-          <span>默认音频设备（在检测到的设备中选择，保存后一直生效）</span>
+          <span>{t('默认音频设备（在检测到的设备中选择，保存后一直生效）')}</span>
           <select
             value={settings.audioDeviceId || audioDevices[0]?.deviceId || ''}
             onChange={(e) => set('audioDeviceId', e.target.value)}
           >
-            {audioDevices.length === 0 && <option value="">未检测到音频设备</option>}
+            {audioDevices.length === 0 && <option value="">{t('未检测到音频设备')}</option>}
             {audioDevices.map((d) => (
               <option key={d.deviceId} value={d.deviceId}>
                 {d.label}
@@ -181,7 +183,7 @@ export default function SettingsPage(): JSX.Element {
           </select>
         </label>
         <label className="field">
-          <span>屏幕直播采集的屏幕（放映 PPT 用，保存后一直生效）</span>
+          <span>{t('屏幕直播采集的屏幕（放映 PPT 用，保存后一直生效）')}</span>
           <select
             value={settings.captureDisplayId || screens[0]?.id || ''}
             onChange={(e) => set('captureDisplayId', e.target.value)}
@@ -196,51 +198,51 @@ export default function SettingsPage(): JSX.Element {
       </section>
 
       <section className="panel">
-        <h3 className="panel-title">外观主题</h3>
+        <h3 className="panel-title">{t('外观主题')}</h3>
         <div className="theme-picker">
-          {THEME_OPTIONS.map((t) => (
+          {THEME_OPTIONS.map((th) => (
             <button
-              key={t.key}
-              className={`theme-swatch ${settings.theme === t.key ? 'active' : ''}`}
+              key={th.key}
+              className={`theme-swatch ${settings.theme === th.key ? 'active' : ''}`}
               onClick={() => {
-                setTheme(t.key)
+                setTheme(th.key)
               }}
             >
-              <span className="dot" style={{ background: t.swatch }} />
-              {t.label}
+              <span className="dot" style={{ background: th.swatch }} />
+              {t(th.label)}
             </button>
           ))}
         </div>
       </section>
 
       <section className="panel">
-        <h3 className="panel-title">系统</h3>
+        <h3 className="panel-title">{t('系统')}</h3>
         <label className="field-inline">
           <input
             type="checkbox"
             checked={settings.launchAtLogin}
             onChange={(e) => set('launchAtLogin', e.target.checked)}
           />
-          <span>开机自动启动</span>
+          <span>{t('开机自动启动')}</span>
         </label>
         <label className="field">
-          <span>点击关闭按钮时</span>
+          <span>{t('点击关闭按钮时')}</span>
           <select
             value={settings.closeAction}
             onChange={(e) => set('closeAction', e.target.value as AppSettings['closeAction'])}
           >
-            <option value="ask">每次询问</option>
-            <option value="tray">最小化到托盘</option>
-            <option value="quit">退出软件</option>
+            <option value="ask">{t('每次询问')}</option>
+            <option value="tray">{t('最小化到托盘')}</option>
+            <option value="quit">{t('退出软件')}</option>
           </select>
         </label>
       </section>
 
       <div className="actions-row">
         <button className="btn btn-primary" onClick={save}>
-          保存设置
+          {t('保存设置')}
         </button>
-        {savedTip && <span className="saved-tip">✓ 已保存</span>}
+        {savedTip && <span className="saved-tip">{t('✓ 已保存')}</span>}
       </div>
     </div>
   )

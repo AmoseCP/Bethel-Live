@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { computeRms, dbToPercent, rmsToDb } from '../../../shared/audioLevel'
+import { useI18n } from '../i18n'
 
 interface Props {
   stream: MediaStream | null
@@ -7,6 +8,7 @@ interface Props {
 
 /** 实时音频电平表：绿-黄-红渐变条 + dB 读数 + 无声检测 */
 export default function AudioMeter({ stream }: Props): JSX.Element {
+  const { t } = useI18n()
   const [db, setDb] = useState(-60)
   const silentSince = useRef<number>(Date.now())
   const [silentTooLong, setSilentTooLong] = useState(false)
@@ -54,8 +56,8 @@ export default function AudioMeter({ stream }: Props): JSX.Element {
         <div className="meter-fill" style={{ width: `${percent}%` }} />
       </div>
       <span className="meter-db">{db <= -59.5 ? '-∞' : db.toFixed(0)} dB</span>
-      {!stream && <span className="meter-warn">未检测到音频设备</span>}
-      {stream && silentTooLong && <span className="meter-warn">⚠ 持续无声，请检查声卡</span>}
+      {!stream && <span className="meter-warn">{t('未检测到音频设备')}</span>}
+      {stream && silentTooLong && <span className="meter-warn">{t('⚠ 持续无声，请检查声卡')}</span>}
     </div>
   )
 }

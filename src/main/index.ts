@@ -46,6 +46,11 @@ const MINI_SIZE = { width: 360, height: 280 }
 const NORMAL_MIN = { width: 800, height: 560 }
 let defaultSize = { width: 1280, height: 820 }
 
+/** 主进程侧双语文案（托盘/系统对话框） */
+function L(zh: string, en: string): string {
+  return getSettings().language === 'en' ? en : zh
+}
+
 function resourcePath(name: string): string {
   return app.isPackaged
     ? join(process.resourcesPath, name)
@@ -68,9 +73,9 @@ async function handleCloseRequest(win: BrowserWindow): Promise<void> {
     if (isStreaming()) {
       const { response } = await dialog.showMessageBox(win, {
         type: 'warning',
-        title: '正在直播',
-        message: '直播推流正在进行中，确定退出并停止直播吗？',
-        buttons: ['取消', '退出并停止直播'],
+        title: L('正在直播', 'Live in progress'),
+        message: L('直播推流正在进行中，确定退出并停止直播吗？', 'Streaming is in progress. Quit and stop the live stream?'),
+        buttons: [L('取消', 'Cancel'), L('退出并停止直播', 'Quit & stop streaming')],
         defaultId: 0,
         cancelId: 0
       })
@@ -86,15 +91,18 @@ async function handleCloseRequest(win: BrowserWindow): Promise<void> {
 
   const { response, checkboxChecked } = await dialog.showMessageBox(win, {
     type: 'question',
-    title: '关闭 Bethel Live',
-    message: '要退出软件，还是最小化到系统托盘？',
+    title: L('关闭 Bethel Live', 'Close Bethel Live'),
+    message: L('要退出软件，还是最小化到系统托盘？', 'Quit the app, or minimize to system tray?'),
     detail: isStreaming()
-      ? '⚠ 直播推流正在进行中。最小化到托盘不会中断直播；退出软件将停止推流。'
-      : '最小化到托盘后，软件将在后台继续运行。',
-    buttons: ['最小化到托盘', '退出软件', '取消'],
+      ? L(
+          '⚠ 直播推流正在进行中。最小化到托盘不会中断直播；退出软件将停止推流。',
+          '⚠ Streaming is in progress. Minimizing to tray keeps the stream running; quitting stops it.'
+        )
+      : L('最小化到托盘后，软件将在后台继续运行。', 'The app keeps running in the background when minimized to tray.'),
+    buttons: [L('最小化到托盘', 'Minimize to tray'), L('退出软件', 'Quit'), L('取消', 'Cancel')],
     defaultId: 0,
     cancelId: 2,
-    checkboxLabel: '记住我的选择，下次不再询问',
+    checkboxLabel: L('记住我的选择，下次不再询问', 'Remember my choice'),
     checkboxChecked: false
   })
 
@@ -106,18 +114,22 @@ async function handleCloseRequest(win: BrowserWindow): Promise<void> {
   else void quitApp()
 }
 
+function trayMenu(): Menu {
+  return Menu.buildFromTemplate([
+    { label: L('显示 Bethel Live', 'Show Bethel Live'), click: () => showMainWindow() },
+    { type: 'separator' },
+    { label: L('退出', 'Quit'), click: () => void quitApp() }
+  ])
+}
+
 function createTray(): void {
   const icon = nativeImage.createFromPath(resourcePath('tray-icon.png'))
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon)
   tray.setToolTip('Bethel Live')
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: '显示 Bethel Live', click: () => showMainWindow() },
-      { type: 'separator' },
-      { label: '退出', click: () => void quitApp() }
-    ])
-  )
+  tray.setContextMenu(trayMenu())
   tray.on('click', () => showMainWindow())
+  // 语言切换后重建托盘菜单
+  app.on('bethel:language-changed' as 'ready', () => tray?.setContextMenu(trayMenu()))
 }
 
 function showMainWindow(): void {

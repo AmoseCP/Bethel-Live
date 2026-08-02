@@ -25,6 +25,8 @@ export interface AppSettings {
   closeAction: 'ask' | 'quit' | 'tray'
   /** 界面主题 */
   theme: ThemeKind
+  /** 界面语言 */
+  language: 'zh' | 'en'
   /** 直播画质档位（默认 720p 高清） */
   quality: 'fullhd' | 'high' | 'medium' | 'low'
 }
@@ -45,5 +47,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   launchAtLogin: false,
   closeAction: 'ask',
   theme: DEFAULT_THEME,
+  language: 'zh',
   quality: 'high'
 }

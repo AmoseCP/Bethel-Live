@@ -1,4 +1,5 @@
 import type { JSX } from 'react'
+import { useI18n } from '../i18n'
 
 export type LivePhase = 'idle' | 'created' | 'pushing' | 'testing' | 'live' | 'ending' | 'complete'
 
@@ -14,11 +15,12 @@ const MAP: Record<LivePhase, { text: string; cls: string }> = {
 
 /** 直播状态灯 */
 export default function StatusBadge({ phase }: { phase: LivePhase }): JSX.Element {
+  const { t } = useI18n()
   const { text, cls } = MAP[phase]
   return (
     <span className={`status-badge ${cls}`}>
       <span className="badge-dot" />
-      {text}
+      {t(text)}
     </span>
   )
 }

@@ -137,6 +137,9 @@ export function registerIpcHandlers(): void {
         w.setContentProtection(next.videoSource === 'screen')
       }
     }
+    if ('language' in patch) {
+      app.emit('bethel:language-changed' as 'ready')
+    }
     // 通知所有页面设置已变更（直播页常驻挂载，需实时感知设备/描述等变化）
     for (const w of BrowserWindow.getAllWindows()) {
       w.webContents.send('settings:changed', next)

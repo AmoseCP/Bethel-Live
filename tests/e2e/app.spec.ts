@@ -27,6 +27,12 @@ test('设置：修改并保存后跨重启保留', async () => {
     await first.page.locator('.theme-swatch', { hasText: '浅粉' }).click()
     await expect(first.page.locator('html')).toHaveAttribute('data-theme', 'pink')
 
+    // 语言切换：立即生效，导航变英文，再切回中文
+    await first.page.locator('.lang-toggle').click()
+    await expect(first.page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible()
+    await first.page.locator('.lang-toggle').click()
+    await expect(first.page.getByRole('button', { name: '设置', exact: true })).toBeVisible()
+
     // 设置变更实时同步到常驻的直播页（无需重启）
     await first.page.getByRole('button', { name: '直播' }).click()
     await expect(

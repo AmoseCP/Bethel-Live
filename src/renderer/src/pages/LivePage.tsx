@@ -7,6 +7,7 @@ import AudioMeter from '../components/AudioMeter'
 import StatusBadge, { type LivePhase } from '../components/StatusBadge'
 import LiveTimer from '../components/LiveTimer'
 import ShareModal from '../components/ShareModal'
+import { useI18n } from '../i18n'
 
 interface StreamStats {
   fps: number
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
+  const { t } = useI18n()
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [authorized, setAuthorized] = useState<boolean | null>(null)
   const [titleOptions, setTitleOptions] = useState<string[]>([])
@@ -177,7 +179,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
     // 直播/测试进行中：用新视频源重启推流（画面短暂停顿，直播不中断）
     if (streamingActive && session) {
       const prevSource = settings.videoSource
-      await run(next === 'screen' ? '正在切换到屏幕画面…' : '正在切换到摄像机画面…', async () => {
+      await run(next === 'screen' ? t('正在切换到屏幕画面…') : t('正在切换到摄像机画面…'), async () => {
         await window.bethel.stream.stop()
         const audioLabel = preview.audioStream?.getAudioTracks()[0]?.label ?? ''
         const startOpts = { rtmpUrl: session.rtmpUrl, source: next, videoLabel: '', audioLabel }
@@ -216,13 +218,13 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   }, [])
 
   const connectYouTube = (): Promise<void> =>
-    run('正在等待浏览器授权…', async () => {
+    run(t('正在等待浏览器授权…'), async () => {
       await window.bethel.youtube.signIn()
       setAuthorized(true)
     })
 
   const createLive = (): Promise<void> =>
-    run('正在创建直播…', async () => {
+    run(t('正在创建直播…'), async () => {
       setScheduledAt(null) // 手动创建后解除已武装的定时，避免到点重复开播
       setSession(await window.bethel.youtube.createLive(title, description))
       setPhase('created')
@@ -277,12 +279,12 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   )
 
   const startTest = (): Promise<void> =>
-    run('正在启动推流并等待 YouTube 接收信号…', async () => {
+    run(t('正在启动推流并等待 YouTube 接收信号…'), async () => {
       if (session) await doStartTest(session)
     })
 
   const goLive = (): Promise<void> =>
-    run('正在切换为正式直播…', async () => {
+    run(t('正在切换为正式直播…'), async () => {
       if (!session) return
       await window.bethel.youtube.transition(session.broadcast.broadcastId, 'live')
       setPhase('live')
@@ -290,7 +292,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
     })
 
   const endLive = (): Promise<void> =>
-    run('正在结束直播…', async () => {
+    run(t('正在结束直播…'), async () => {
       if (!session) return
       const before = phaseRef.current
       setPhase('ending')
@@ -313,7 +315,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   /** 定时到点：创建 → 推流测试 → 自检 → 开播 */
   const autoStart = useCallback((): Promise<void> => {
     if (phaseRef.current !== 'idle') return Promise.resolve() // 已手动开播则忽略定时触发
-    return run('定时开播：正在自动创建并开始直播…', async () => {
+    return run(t('定时开播：正在自动创建并开始直播…'), async () => {
       // 标题若未手动修改，按触发时刻重新生成（防止上午武装、晚上开播用错场次）
       let useTitle = title
       if (title === defaultTitleRef.current) {
@@ -351,14 +353,14 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
       if (settings?.telegramBotToken && settings?.telegramChatId) {
         try {
           await window.bethel.telegram.send(`${sess.broadcast.title}\n${sess.shareLink}`)
-          setNotice('📤 直播链接已自动发送到 Telegram 群组')
+          setNotice(t('📤 直播链接已自动发送到 Telegram 群组'))
         } catch (e) {
           setError(
             `直播已正常开始，但 Telegram 自动发送失败：${e instanceof Error ? e.message : e}\n可点「分享到 Telegram」手动发送。`
           )
         }
       } else {
-        setNotice('直播已开始。未配置 Telegram，已跳过自动分享链接。')
+        setNotice(t('直播已开始。未配置 Telegram，已跳过自动分享链接。'))
       }
     })
   }, [run, doStartTest, title, description, preview.videoStream, preview.audioStream, settings])
@@ -447,7 +449,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
     return (
       <div className="mini-view">
         {ffPreviewUrl && streamingActive && !preview.videoStream ? (
-          <img src={ffPreviewUrl} className="mini-video" alt="推流画面" />
+          <img src={ffPreviewUrl} className="mini-video" alt={t('推流画面')} />
         ) : (
           <video ref={attachVideo} autoPlay muted playsInline className="mini-video" />
         )}
@@ -462,7 +464,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
               className={`btn btn-mini ${source === 'camera' ? 'btn-mini-active' : ''}`}
               onClick={() => switchSource('camera')}
               disabled={busy !== null}
-              title="切换到摄像机"
+              title={t('切换到摄像机')}
             >
               📷
             </button>
@@ -470,7 +472,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
               className={`btn btn-mini ${source === 'screen' ? 'btn-mini-active' : ''}`}
               onClick={() => switchSource('screen')}
               disabled={busy !== null}
-              title="切换到本机屏幕（放 PPT）"
+              title={t('切换到本机屏幕（放 PPT）')}
             >
               🖥
             </button>
@@ -479,7 +481,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
                 ⏹
               </button>
             )}
-            <button className="btn btn-mini" onClick={() => onToggleMini(false)} title="返回完整界面">
+            <button className="btn btn-mini" onClick={() => onToggleMini(false)} title={t('返回完整界面')}>
               ⤢
             </button>
           </div>
@@ -493,12 +495,12 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
     <div className="page page-live">
       <div className="live-header">
         <div className="live-header-left">
-          <h2 className="page-title">直播控制台</h2>
+          <h2 className="page-title">{t('直播控制台')}</h2>
           <StatusBadge phase={phase} />
           {phase === 'live' && liveStartAt && <LiveTimer since={liveStartAt} />}
         </div>
         <div className="live-header-right">
-          <button className="btn btn-icon" onClick={() => onToggleMini(true)} title="迷你模式">
+          <button className="btn btn-icon" onClick={() => onToggleMini(true)} title={t('迷你模式')}>
             ⧉
           </button>
           <div className="source-switch">
@@ -506,17 +508,17 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
               className={`switch-btn ${source === 'camera' ? 'active' : ''}`}
               onClick={() => switchSource('camera')}
               disabled={busy !== null}
-              title="直播中也可切换，画面短暂停顿后恢复"
+              title={t('直播中也可切换，画面短暂停顿后恢复')}
             >
-              📷 摄像机
+              📷 {t('摄像机')}
             </button>
             <button
               className={`switch-btn ${source === 'screen' ? 'active' : ''}`}
               onClick={() => switchSource('screen')}
               disabled={busy !== null}
-              title="放映 PPT 时切到此源，观众即可看到你的屏幕"
+              title={t('放映 PPT 时切到此源，观众即可看到你的屏幕')}
             >
-              🖥 本机屏幕
+              🖥 {t('本机屏幕')}
             </button>
           </div>
         </div>
@@ -524,17 +526,17 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
 
       <div className="preview-box">
         {!hasSignal && ffPreviewUrl && streamingActive ? (
-          <img src={ffPreviewUrl} className="preview-video" alt="推流画面" />
+          <img src={ffPreviewUrl} className="preview-video" alt={t('推流画面')} />
         ) : (
           <video ref={attachVideo} autoPlay muted playsInline className="preview-video" />
         )}
         {!hasSignal && !(ffPreviewUrl && streamingActive) && (
           <div className="preview-overlay">
             {isWin && source === 'camera' && videoReleased && streamingActive
-              ? '📡 推流画面加载中…'
+              ? t('📡 推流画面加载中…')
               : preview.videoError
-                ? `⚠ 无法打开视频源：${preview.videoError}`
-                : '正在等待视频信号…'}
+                ? `${t('⚠ 无法打开视频源：')}${preview.videoError}`
+                : t('正在等待视频信号…')}
           </div>
         )}
         {stats && streamingActive && (
@@ -548,14 +550,14 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
 
       <div className="panel meter-panel">
         <div className="meter-head">
-          <h3 className="panel-title">音频电平</h3>
+          <h3 className="panel-title">{t('音频电平')}</h3>
           <button
             className={`btn btn-mini ${monitorOn ? 'btn-mini-active' : ''}`}
             onClick={() => setMonitorOn(!monitorOn)}
             disabled={!preview.audioStream}
-            title="在本机播放采集到的声音，用于开播前确认音质"
+            title={t('在本机播放采集到的声音，用于开播前确认音质')}
           >
-            🎧 {monitorOn ? '停止试听' : '试听'}
+            🎧 {monitorOn ? t('停止试听') : t('试听')}
           </button>
         </div>
         <AudioMeter stream={preview.audioStream} />
@@ -567,19 +569,19 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
                 if (el && el.srcObject !== preview.audioStream) el.srcObject = preview.audioStream
               }}
             />
-            <p className="meter-warn">🎧 试听中：请佩戴耳机——外放扬声器会与麦克风形成啸叫</p>
+            <p className="meter-warn">{t('🎧 试听中：请佩戴耳机——外放扬声器会与麦克风形成啸叫')}</p>
           </>
         )}
-        {preview.audioError && <p className="meter-warn">⚠ 无法打开音频设备：{preview.audioError}</p>}
+        {preview.audioError && <p className="meter-warn">{t('⚠ 无法打开音频设备：')}{preview.audioError}</p>}
       </div>
 
       <section className="panel" style={{ marginTop: 16 }}>
-        <h3 className="panel-title">直播流程</h3>
+        <h3 className="panel-title">{t('直播流程')}</h3>
 
         {!session && (
           <>
             <label className="field">
-              <span>直播标题（按当天日期自动生成，可修改）</span>
+              <span>{t('直播标题（按当天日期自动生成，可修改）')}</span>
               <input value={title} onChange={(e) => setTitle(e.target.value)} />
             </label>
             {titleOptions.length > 1 && (
@@ -592,7 +594,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
               </div>
             )}
             <label className="field">
-              <span>直播描述</span>
+              <span>{t('直播描述')}</span>
               <input value={description} onChange={(e) => setDescription(e.target.value)} />
             </label>
             <div className="actions-row" style={{ margin: 0 }}>
@@ -602,7 +604,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
                   onClick={createLive}
                   disabled={busy !== null || !title.trim()}
                 >
-                  🚀 一键创建直播
+                  {t('🚀 一键创建直播')}
                 </button>
               ) : (
                 <>
@@ -611,10 +613,10 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
                     onClick={connectYouTube}
                     disabled={busy !== null || authorized === null}
                   >
-                    连接 YouTube 账号
+                    {t('连接 YouTube 账号')}
                   </button>
                   <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>
-                    连接后即可用上方标题一键创建直播（需先在「设置」中填写 Google API 凭据）
+                    {t('连接后即可用上方标题一键创建直播（需先在「设置」中填写 Google API 凭据）')}
                   </span>
                 </>
               )}
@@ -623,7 +625,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
             <div className="schedule-row">
               {scheduledAt === null ? (
                 <>
-                  <span className="schedule-label">⏰ 定时直播（今天）</span>
+                  <span className="schedule-label">{t('⏰ 定时直播（今天）')}</span>
                   <input
                     type="time"
                     value={scheduleTime}
@@ -634,23 +636,23 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
                     className="btn"
                     onClick={armSchedule}
                     disabled={!scheduleTime || busy !== null || !authorized}
-                    title={authorized ? '' : '需先连接 YouTube 账号'}
+                    title={authorized ? '' : t('需先连接 YouTube 账号')}
                   >
-                    启动定时
+                    {t('启动定时')}
                   </button>
                 </>
               ) : (
                 <>
                   <span className="schedule-armed">
-                    ⏰ 将于 {scheduleTime} 自动开播（倒计时 {countdown || '…'}）
+                    {t('⏰ 将于 {time} 自动开播（倒计时 {cd}）').replace('{time}', scheduleTime).replace('{cd}', countdown || '…')}
                   </span>
                   <span className={scheduleReady ? 'saved-tip' : 'error-tip'} style={{ margin: 0, fontSize: 12 }}>
                     {scheduleReady
-                      ? '✓ 画面与声音就绪'
-                      : `⚠ ${scheduleVideoOk ? '' : '无画面 '}${scheduleAudioOk ? '' : '无音频设备 '}— 请在开播前处理`}
+                      ? t('✓ 画面与声音就绪')
+                      : `⚠ ${scheduleVideoOk ? '' : t('无画面 ')}${scheduleAudioOk ? '' : t('无音频设备 ')}${t('— 请在开播前处理')}`}
                   </span>
                   <button className="btn" onClick={() => setScheduledAt(null)}>
-                    取消定时
+                    {t('取消定时')}
                   </button>
                 </>
               )}
@@ -661,42 +663,42 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
         {session && (
           <div className="session-info">
             <p className="session-title">
-              {phase === 'complete' ? '✓ 直播已结束：' : '✓ 已创建：'}
+              {phase === 'complete' ? t('✓ 直播已结束：') : t('✓ 已创建：')}
               {session.broadcast.title}
             </p>
             <div className="share-row">
               <code className="share-link">{session.shareLink}</code>
               <button className="btn" onClick={copyLink}>
-                {copied ? '✓ 已复制' : '复制链接'}
+                {copied ? t('✓ 已复制') : t('复制链接')}
               </button>
               <button className="btn" onClick={() => setShareOpen(true)}>
-                📤 分享到 Telegram
+                {t('📤 分享到 Telegram')}
               </button>
             </div>
 
             <div className="actions-row" style={{ marginTop: 14, marginBottom: 0 }}>
               {phase === 'created' && (
                 <button className="btn btn-primary" onClick={startTest} disabled={busy !== null}>
-                  ▶ 开始推流测试
+                  {t('▶ 开始推流测试')}
                 </button>
               )}
               {phase === 'pushing' && busy === null && (
                 <button
                   className="btn btn-danger"
                   onClick={() =>
-                    run('正在停止推流…', async () => {
+                    run(t('正在停止推流…'), async () => {
                       await window.bethel.stream.stop()
                       setVideoReleased(false)
                       setPhase('created')
                     })
                   }
                 >
-                  ⏹ 停止推流
+                  {t('⏹ 停止推流')}
                 </button>
               )}
               {phase === 'testing' && (
                 <button className="btn btn-live" onClick={goLive} disabled={busy !== null}>
-                  🔴 正式开播
+                  {t('🔴 正式开播')}
                 </button>
               )}
               {(phase === 'testing' || phase === 'live') && streamDown && (
@@ -704,7 +706,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
                   className="btn btn-primary"
                   disabled={busy !== null}
                   onClick={() =>
-                    run('正在重新推流…', async () => {
+                    run(t('正在重新推流…'), async () => {
                       if (lastStartOpts.current) {
                         await window.bethel.stream.start(lastStartOpts.current)
                         setStreamDown(false)
@@ -712,23 +714,23 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
                     })
                   }
                 >
-                  🔄 重新推流（链接不变）
+                  {t('🔄 重新推流（链接不变）')}
                 </button>
               )}
               {(phase === 'testing' || phase === 'live') && (
                 <button className="btn btn-danger" onClick={endLive} disabled={busy !== null}>
-                  ⏹ 结束直播
+                  {t('⏹ 结束直播')}
                 </button>
               )}
               {phase === 'complete' && (
                 <button className="btn" onClick={resetSession}>
-                  创建新直播
+                  {t('创建新直播')}
                 </button>
               )}
             </div>
             {phase === 'testing' && (
               <p style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 10 }}>
-                测试中：请确认上方预览画面与音频电平正常。观众此时还看不到画面，点「正式开播」后直播对观众可见。
+                {t('测试中：请确认上方预览画面与音频电平正常。观众此时还看不到画面，点「正式开播」后直播对观众可见。')}
               </p>
             )}
           </div>
@@ -747,7 +749,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
                 setTimeout(() => setErrCopied(false), 1500)
               }}
             >
-              {errCopied ? '✓ 已复制' : '📋 复制报错'}
+              {errCopied ? t('✓ 已复制') : t('📋 复制报错')}
             </button>
           </div>
         )}
