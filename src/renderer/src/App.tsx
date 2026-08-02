@@ -66,6 +66,8 @@ export default function App(): JSX.Element {
                 key={item.key}
                 className={`nav-item ${page === item.key ? 'active' : ''}`}
                 onClick={() => setPage(item.key)}
+                aria-label={item.label}
+                title={item.label}
               >
                 <span className="nav-icon">{item.icon}</span>
                 <span className="nav-label">{item.label}</span>

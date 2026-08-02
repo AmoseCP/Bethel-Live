@@ -52,11 +52,11 @@ const app = await electron.launch({
 })
 try {
   const page = await app.firstWindow()
-  await page.waitForSelector('.brand-name', { timeout: 30_000 })
-  const brand = await page.locator('.brand-name').innerText()
-  if (brand !== 'Bethel Live') fail(`界面加载异常：品牌名为 "${brand}"`)
+  // 用任何窗口宽度下都可见的元素做判据（窄窗口时品牌文字会按设计隐藏为图标栏）
+  await page.waitForSelector('.status-badge', { timeout: 30_000 })
   const badge = await page.locator('.status-badge').innerText()
   if (!badge.includes('未开播')) fail(`初始状态异常：${badge}`)
+  await page.waitForSelector('.logo-img', { timeout: 10_000 })
   console.log('✓ 打包应用真实启动，界面加载正常')
 } finally {
   await app.close()
