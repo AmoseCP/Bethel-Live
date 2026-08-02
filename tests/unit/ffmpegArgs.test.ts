@@ -121,3 +121,29 @@ describe('画质预设', () => {
     expect(args.join(' ')).toContain('-b:v 2500k')
   })
 })
+
+describe('预览回传管道', () => {
+  it('previewPipe=true 时追加 MJPEG stdout 输出（仅显式 map 视频流）', async () => {
+    const { buildStreamArgs } = await import('../../src/main/core/ffmpegArgs')
+    const args = buildStreamArgs(
+      { platform: 'win32', source: 'camera', videoName: 'Cam', audioName: 'Mic' },
+      'rtmp://a.rtmp.youtube.com/live2/k',
+      undefined,
+      true
+    )
+    const s = args.join(' ')
+    expect(s).toContain('-f image2pipe')
+    expect(args[args.length - 1]).toBe('pipe:1')
+    expect(s).toContain('-map 0:v:0')
+    expect(s).toContain('scale=480:-2,fps=10')
+  })
+
+  it('默认不带预览输出', async () => {
+    const { buildStreamArgs } = await import('../../src/main/core/ffmpegArgs')
+    const args = buildStreamArgs(
+      { platform: 'win32', source: 'camera', videoName: 'Cam', audioName: 'Mic' },
+      'rtmp://a.rtmp.youtube.com/live2/k'
+    )
+    expect(args.join(' ')).not.toContain('image2pipe')
+  })
+})

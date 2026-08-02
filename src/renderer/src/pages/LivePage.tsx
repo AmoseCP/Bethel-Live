@@ -34,6 +34,8 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   const [copied, setCopied] = useState(false)
   const [monitorOn, setMonitorOn] = useState(false)
   const [videoReleased, setVideoReleased] = useState(false)
+  const [ffPreviewUrl, setFfPreviewUrl] = useState<string | null>(null)
+  const ffPreviewUrlRef = useRef<string | null>(null)
   const [errCopied, setErrCopied] = useState(false)
   const [streamDown, setStreamDown] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -71,6 +73,13 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
     refreshTitleInfo()
     window.addEventListener('focus', refreshTitleInfo)
     const offStats = window.bethel.stream.onStats(setStats)
+    // FFmpeg 回传的推流画面帧（Windows 摄像头独占时的软件内预览）
+    const offFrame = window.bethel.stream.onPreviewFrame((jpeg) => {
+      const url = URL.createObjectURL(new Blob([jpeg.buffer as ArrayBuffer], { type: 'image/jpeg' }))
+      if (ffPreviewUrlRef.current) URL.revokeObjectURL(ffPreviewUrlRef.current)
+      ffPreviewUrlRef.current = url
+      setFfPreviewUrl(url)
+    })
     // 设置页改动实时同步（设备/屏幕偏好/默认描述等）
     const offSettings = window.bethel.settings.onChanged((s) => {
       setSettings(s)
@@ -83,6 +92,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
     })
     const offExit = window.bethel.stream.onExit(async (info) => {
       setStats(null)
+      setFfPreviewUrl(null)
       const ph = phaseRef.current
       if (info.expected || ph === 'complete' || ph === 'idle') return
 
@@ -123,6 +133,7 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
     return () => {
       window.removeEventListener('focus', refreshTitleInfo)
       offStats()
+      offFrame()
       offSettings()
       offExit()
     }
@@ -402,7 +413,11 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
   if (mini) {
     return (
       <div className="mini-view">
-        <video ref={attachVideo} autoPlay muted playsInline className="mini-video" />
+        {ffPreviewUrl && streamingActive && !preview.videoStream ? (
+          <img src={ffPreviewUrl} className="mini-video" alt="推流画面" />
+        ) : (
+          <video ref={attachVideo} autoPlay muted playsInline className="mini-video" />
+        )}
         <div className="mini-overlay">
           <div className="mini-top">
             <StatusBadge phase={phase} />
@@ -476,10 +491,13 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
 
       <div className="preview-box">
         <video ref={attachVideo} autoPlay muted playsInline className="preview-video" />
-        {!hasSignal && (
+        {!hasSignal && ffPreviewUrl && streamingActive && (
+          <img src={ffPreviewUrl} className="preview-video" alt="推流画面" />
+        )}
+        {!hasSignal && !(ffPreviewUrl && streamingActive) && (
           <div className="preview-overlay">
             {isWin && source === 'camera' && videoReleased && streamingActive
-              ? '📡 推流中：摄像头画面已交给推流引擎（Windows 独占限制）。下方码率/帧率跳动即推流正常，可用手机打开分享链接核对画面。'
+              ? '📡 推流画面加载中…'
               : preview.videoError
                 ? `⚠ 无法打开视频源：${preview.videoError}`
                 : '正在等待视频信号…'}

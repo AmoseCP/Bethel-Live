@@ -62,10 +62,21 @@ function encodeArgs(o: StreamEncodeOptions, rtmpUrl: string): string[] {
   ]
 }
 
+/** 预览回传输出：480p@10fps MJPEG 到 stdout（Windows 摄像头独占时软件内看画面用） */
+const PREVIEW_PIPE_ARGS = [
+  '-map', '0:v:0',
+  '-vf', 'scale=480:-2,fps=10',
+  '-c:v', 'mjpeg',
+  '-q:v', '7',
+  '-f', 'image2pipe',
+  'pipe:1'
+]
+
 export function buildStreamArgs(
   target: CaptureTarget,
   rtmpUrl: string,
-  o: StreamEncodeOptions = DEFAULT_ENCODE
+  o: StreamEncodeOptions = DEFAULT_ENCODE,
+  previewPipe = false
 ): string[] {
   const pre = ['-hide_banner', '-loglevel', 'level+info', '-stats_period', '1']
 
@@ -111,6 +122,7 @@ export function buildStreamArgs(
     '-i', `video=${target.videoName}`,
     '-f', 'dshow',
     '-i', `audio=${target.audioName}`,
-    ...encodeArgs(o, rtmpUrl)
+    ...encodeArgs(o, rtmpUrl),
+    ...(previewPipe ? PREVIEW_PIPE_ARGS : [])
   ]
 }

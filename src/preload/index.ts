@@ -58,6 +58,8 @@ const api = {
     stop: (): Promise<void> => ipcRenderer.invoke('stream:stop'),
     isActive: (): Promise<boolean> => ipcRenderer.invoke('stream:isActive'),
     onStats: (cb: (p: StreamProgress) => void): (() => void) => subscribe('stream:stats', cb),
+    onPreviewFrame: (cb: (jpeg: Uint8Array) => void): (() => void) =>
+      subscribe('stream:previewFrame', cb),
     onExit: (cb: (p: StreamExitInfo) => void): (() => void) => subscribe('stream:exit', cb)
   },
   settings: {

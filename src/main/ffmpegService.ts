@@ -144,9 +144,39 @@ async function startStreamInner(opts: StreamStartOptions): Promise<void> {
   target.audioIndex = audio.index
   target.audioName = audio.name
 
-  const args = buildStreamArgs(target, opts.rtmpUrl, QUALITY_PRESETS[getSettings().quality])
-  const child = spawn(ffmpegPath(), args, { stdio: ['pipe', 'ignore', 'pipe'] })
+  // Windows 摄像头被 ffmpeg 独占：让 ffmpeg 回传低帧率画面供软件内预览
+  const previewPipe = target.platform === 'win32' && opts.source === 'camera'
+  const args = buildStreamArgs(target, opts.rtmpUrl, QUALITY_PRESETS[getSettings().quality], previewPipe)
+  const child = spawn(ffmpegPath(), args, {
+    stdio: ['pipe', previewPipe ? 'pipe' : 'ignore', 'pipe']
+  })
   current = child
+
+  if (previewPipe && child.stdout) {
+    // 从 MJPEG 流中切出完整 JPEG 帧（SOI 0xFFD8 … EOI 0xFFD9），节流广播
+    let acc: Buffer = Buffer.alloc(0)
+    let lastSent = 0
+    child.stdout.on('data', (chunk: Buffer) => {
+      acc = acc.length === 0 ? chunk : Buffer.concat([acc, chunk])
+      if (acc.length > 8 * 1024 * 1024) acc = Buffer.alloc(0) // 异常膨胀时丢弃防泄漏
+      for (;;) {
+        const start = acc.indexOf(Buffer.from([0xff, 0xd8]))
+        if (start < 0) break
+        const end = acc.indexOf(Buffer.from([0xff, 0xd9]), start + 2)
+        if (end < 0) {
+          if (start > 0) acc = acc.subarray(start)
+          break
+        }
+        const frame = acc.subarray(start, end + 2)
+        acc = acc.subarray(end + 2)
+        const now = Date.now()
+        if (now - lastSent >= 100) {
+          lastSent = now
+          broadcast('stream:previewFrame', frame)
+        }
+      }
+    })
+  }
 
   // 每个进程独享日志尾（重启推流后旧进程 exit 事件不会读到新进程日志）
   const logTail: string[] = []
@@ -158,8 +188,8 @@ async function startStreamInner(opts: StreamStartOptions): Promise<void> {
   // ffmpeg 刚退出瞬间对 stdin 的写入会以异步 error 事件抛出，必须兜底防主进程崩溃
   child.stdin?.on('error', () => {})
 
-  child.stderr.setEncoding('utf8')
-  child.stderr.on('data', (chunk: string) => {
+  child.stderr?.setEncoding('utf8')
+  child.stderr?.on('data', (chunk: string) => {
     for (const line of chunk.split(/\r|\n/)) {
       if (!line.trim()) continue
       logTail.push(redact(line))
