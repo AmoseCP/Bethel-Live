@@ -324,8 +324,16 @@ export default function LivePage({ mini, onToggleMini }: Props): JSX.Element {
       setSession(sess)
       setPhase('created')
       await doStartTest(sess)
-      // 无人值守自检：无画面或无音频设备时停在测试阶段，不把黑屏推给观众
-      const videoOk = preview.videoStream?.getVideoTracks().some((t) => t.readyState === 'live')
+      // 无人值守自检：优先看本地预览轨；Windows 摄像头已交给 FFmpeg 时，
+      // 以回传画面帧作为"有画面"的证据（最多等 5 秒首帧）
+      let videoOk =
+        preview.videoStream?.getVideoTracks().some((t) => t.readyState === 'live') ?? false
+      if (!videoOk && isWin && source === 'camera') {
+        for (let i = 0; i < 10 && !ffPreviewUrlRef.current; i++) {
+          await new Promise((r) => setTimeout(r, 500))
+        }
+        videoOk = ffPreviewUrlRef.current !== null
+      }
       const audioOk = (preview.audioStream?.getAudioTracks().length ?? 0) > 0
       if (!videoOk || !audioOk) {
         setError(
